@@ -5,7 +5,7 @@ import logging
 from flask import Flask
 
 import utils
-from simplyblock_core import constants
+
 from blueprints import snode_ops_k8s
 
 logger_handler = logging.StreamHandler()

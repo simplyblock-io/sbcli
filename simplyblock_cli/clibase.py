@@ -14,6 +14,7 @@ from simplyblock_core.controllers import pool_controller, lvol_controller, snaps
     tasks_controller
 from simplyblock_core.controllers import caching_node_controller, health_controller
 from simplyblock_core.models.pool import Pool
+from simplyblock_core.utils import isolate_cores
 
 
 class CLIWrapperBase:
@@ -37,8 +38,15 @@ class CLIWrapperBase:
         return parent_parser.add_parser(command, description=help, help=help, usage=usage)
 
     def storage_node__deploy(self, sub_command, args):
-        return storage_ops.deploy(args.ifname)
-    
+        spdk_cpu_mask = None
+        if args.spdk_cpu_mask:
+            if self.validate_cpu_mask(args.spdk_cpu_mask):
+                spdk_cpu_mask = args.spdk_cpu_mask
+            else:
+                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
+        isolate_cores = args.isolate_cores
+        return storage_ops.deploy(args.ifname, spdk_cpu_mask, isolate_cores)
+
     def storage_node__deploy_cleaner(self, sub_command, args):
         return storage_ops.deploy_cleaner()
 

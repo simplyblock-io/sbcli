@@ -74,7 +74,10 @@ class CLIWrapper(CLIWrapperBase):
     def init_storage_node__deploy(self, subparser):
         subcommand = self.add_sub_command(subparser, 'deploy', 'Prepares a host to be used as a storage node')
         argument = subcommand.add_argument('--ifname', help='Management interface name, e.g. eth0', type=str, dest='ifname', required=False)
-
+        argument = subcommand.add_argument("--cpu-mask", help='SPDK app CPU mask, default is all cores found',
+                                            dest='spdk_cpu_mask')
+        argument = subcommand.add_argument("--isolate-cores", help='Isolate cores in kernel args for provided cpu mask',
+                                           type=bool, default=False, dest='isolate_cores', required=False)
     def init_storage_node__deploy_cleaner(self, subparser):
         subcommand = self.add_sub_command(subparser, 'deploy-cleaner', 'Cleans a previous simplyblock deploy (local run)')
 

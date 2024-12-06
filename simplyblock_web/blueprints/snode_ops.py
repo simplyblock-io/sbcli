@@ -275,7 +275,6 @@ def get_node_lsblk():
     return data
 
 
-
 @bp.route('/info', methods=['GET'])
 def get_info():
 
@@ -303,6 +302,7 @@ def get_info():
         "cloud_instance": CLOUD_INFO,
 
         "lsblk": get_node_lsblk(),
+        "cores_config": get_cores_distribution(),
     }
     return utils.get_response(out)
 

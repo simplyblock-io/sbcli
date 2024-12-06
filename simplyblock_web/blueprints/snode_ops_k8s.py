@@ -167,6 +167,7 @@ def get_info():
         "network_interface": node_utils.get_nics_data(),
 
         "cloud_instance": CLOUD_INFO,
+        "cores_config": get_cores_distribution(),
     }
     return utils.get_response(out)
 
