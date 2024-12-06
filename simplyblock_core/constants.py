@@ -129,3 +129,7 @@ NVME_TIMEOUT_US=20000000
 
 NVMF_MAX_SUBSYSTEMS=50000
 HA_JM_COUNT=3
+
+JSON_CORES_FILE="/etc/simplyblock/cores_distribution.ini"
+TEMP_CORES_FILE = "/etc/simplyblock/tmp_cores_config"
+
