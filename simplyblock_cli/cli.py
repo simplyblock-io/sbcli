@@ -299,6 +299,7 @@ class CLIWrapper:
         sub_command.add_argument("--inflight-io-threshold", help='The number of inflight IOs allowed before the IO queuing starts', type=int, default=4)
         sub_command.add_argument("--enable-qos", help='Enable qos bdev for storage nodes', action='store_true', dest='enable_qos')
         sub_command.add_argument("--strict-node-anti-affinity", help='Enable strict node anti affinity for storage nodes', action='store_true')
+        sub_command.add_argument("--no-lvstore", help='Create only raid on nodes (testing)', action='store_false', dest='no_lvstore', default=True)
 
 
 
@@ -361,6 +362,7 @@ class CLIWrapper:
         sub_command.add_argument("--json", help='Print json output', required=False, action='store_true')
         sub_command.add_argument("--history", help='(XXdYYh), list history records (one for every 15 minutes) '
                                                    'for XX days and YY hours (up to 10 days in total).')
+        sub_command.add_argument("--records", help='Number of records, default: 20', type=int, default=20)
 
         sub_command = self.add_sub_command(
             subparser, 'get-io-stats', 'Get cluster IO statistics')
@@ -527,6 +529,7 @@ class CLIWrapper:
         sub_command.add_argument("id", help='LVol id')
         sub_command.add_argument("--history", help='(XXdYYh), list history records (one for every 15 minutes) '
                                                    'for XX days and YY hours (up to 10 days in total).')
+        sub_command.add_argument("--records", help='Number of records, default: 20', type=int, default=20)
 
         # lvol get-io-stats
         sub_command = self.add_sub_command(
@@ -971,7 +974,7 @@ class CLIWrapper:
                 cluster_id = args.cluster_id
                 history = args.history
                 is_json = args.json
-                data = cluster_ops.get_capacity(cluster_id, history, is_json=is_json)
+                data = cluster_ops.get_capacity(cluster_id, history, is_json=is_json, records_count=args.records)
                 if is_json:
                     ret = data
                 else:
@@ -1098,7 +1101,7 @@ class CLIWrapper:
             elif sub_command == "get-capacity":
                 id = args.id
                 history = args.history
-                ret = lvol_controller.get_capacity(id, history)
+                ret = lvol_controller.get_capacity(id, history, args.records)
                 if ret:
                     ret = utils.print_table(ret)
                 else:
@@ -1322,6 +1325,7 @@ class CLIWrapper:
         inflight_io_threshold = args.inflight_io_threshold
         enable_qos = args.enable_qos
         strict_node_anti_affinity = args.strict_node_anti_affinity
+        no_lvstore = args.no_lvstore
 
 
         return cluster_ops.create_cluster(
@@ -1329,7 +1333,7 @@ class CLIWrapper:
             CLI_PASS, cap_warn, cap_crit, prov_cap_warn, prov_cap_crit,
             ifname, log_del_interval, metrics_retention_period, contact_point, grafana_endpoint,
             distr_ndcs, distr_npcs, distr_bs, distr_chunk_bs, ha_type, enable_node_affinity,
-            qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity)
+            qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity, no_lvstore)
 
 
     def query_yes_no(self, question, default="yes"):
