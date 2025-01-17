@@ -59,7 +59,6 @@ class CLIWrapper:
         sub_command.add_argument("--is-secondary-node", help='add as secondary node', action='store_true', dest='is_secondary_node', default=False)
         sub_command.add_argument("--namespace", help='k8s namespace to deploy on',)
 
-
         # delete storage node
         sub_command = self.add_sub_command(subparser, "delete", 'Delete storage node obj')
         sub_command.add_argument("node_id", help='UUID of storage node').completer = self._completer_get_sn_list
@@ -302,7 +301,9 @@ class CLIWrapper:
         sub_command.add_argument("--inflight-io-threshold", help='The number of inflight IOs allowed before the IO queuing starts', type=int, default=4)
         sub_command.add_argument("--enable-qos", help='Enable qos bdev for storage nodes', action='store_true', dest='enable_qos')
         sub_command.add_argument("--strict-node-anti-affinity", help='Enable strict node anti affinity for storage nodes', action='store_true')
-
+        sub_command.add_argument("--scale-after-usage", help='scale cluster storage after percentage usage',default="70")
+        sub_command.add_argument("--scale-strategy", help='scale cluster with strategy INCREMENTAL,UNIFORM,ADDSNODE',choices=["INCREMENTAL","UNIFORM","ADDSNODE"],default="ADDSNODE")
+        sub_command.add_argument("--check-capacity-interval", help='how often to check cluster capacity(minutes)',default="5")
 
 
         # add cluster
@@ -1330,6 +1331,10 @@ class CLIWrapper:
         inflight_io_threshold = args.inflight_io_threshold
         enable_qos = args.enable_qos
         strict_node_anti_affinity = args.strict_node_anti_affinity
+        scale_after_usage = args.scale_after_usage
+        scale_strategy = args.scale_strategy
+        check_capacity_interval = args.check_capacity_interval
+        
 
 
         return cluster_ops.create_cluster(
@@ -1337,7 +1342,8 @@ class CLIWrapper:
             CLI_PASS, cap_warn, cap_crit, prov_cap_warn, prov_cap_crit,
             ifname, log_del_interval, metrics_retention_period, contact_point, grafana_endpoint,
             distr_ndcs, distr_npcs, distr_bs, distr_chunk_bs, ha_type, enable_node_affinity,
-            qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity)
+            qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity,
+            scale_after_usage,scale_strategy,check_capacity_interval)
 
 
     def query_yes_no(self, question, default="yes"):
