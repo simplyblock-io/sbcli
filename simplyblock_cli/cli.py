@@ -58,6 +58,11 @@ class CLIWrapper:
         sub_command.add_argument("--enable-test-device", help='Enable creation of test device', action='store_true')
         sub_command.add_argument("--disable-ha-jm", help='Disable HA JM for distrib creation', action='store_false', dest='enable_ha_jm', default=True)
         sub_command.add_argument("--ha-jm-count", help='HA JM count', dest='ha_jm_count', type=int, default=constants.HA_JM_COUNT)
+        sub_command.add_argument("--secondary-stg-name", help="secondary storage name", type=str, default=None)
+        sub_command.add_argument("--secondary-io-timeout-us", "secondary storage I/O timeout in us", type=int, default=0)
+        sub_command.add_argument("--ghost-capacity", "ghost queue capacity", type=int, default=0)
+        sub_command.add_argument("--fifo-main-capacity", "main fifo queue capacity", type=int, default=0)
+        sub_command.add_argument("--fifo-small-capacity", "small fifo queue capacity", type=int, default=0)
         sub_command.add_argument("--is-secondary-node", help='add as secondary node', action='store_true', dest='is_secondary_node', default=False)
         sub_command.add_argument("--namespace", help='k8s namespace to deploy on',)
         sub_command.add_argument("--id-device-by-nqn", help='Use device nqn to identify it instead of serial number', action='store_true', dest='id_device_by_nqn', default=False)
@@ -334,6 +339,8 @@ class CLIWrapper:
         sub_command.add_argument("--inflight-io-threshold", help='The number of inflight IOs allowed before the IO queuing starts', type=int, default=4)
         sub_command.add_argument("--enable-qos", help='Enable qos bdev for storage nodes', action='store_true', dest='enable_qos')
         sub_command.add_argument("--strict-node-anti-affinity", help='Enable strict node anti affinity for storage nodes', action='store_true')
+        sub_command.add_argument("--support-storage-tiering", help="Whether to support storage tiering", type=bool, default=False)
+        sub_command.add_argument("--disaster-recovery", help="AZ disaster recovery mode", type=bool, default=False)
 
         # Activate cluster
         sub_command = self.add_sub_command(subparser, 'activate', 'Create distribs and raid0 bdevs on all the storage node and move the cluster to active state')
@@ -463,10 +470,36 @@ class CLIWrapper:
         sub_command.add_argument("--ha-type", help='LVol HA type (single, ha), default is cluster HA type',
                                  dest='ha_type', choices=["single", "ha", "default"], default='default')
         sub_command.add_argument("--lvol-priority-class", help='Lvol priority class', type=int, default=0)
+        sub_command.add_argument("--is-tiered", help="sends tiered I/O", type=bool, default=False)
+        sub_command.add_argument("--force-fetch", help="fetches are forced", type=bool, default=False)
+        sub_command.add_argument("--sync-fetch", help="reads require synchronous fetches", type=bool, default=True)
+        sub_command.add_argument("--pure-flush-or-evict", help="pure flush or evict", type=bool, default=False)
+        sub_command.add_argumetn("--not-evict-blob-md", help="what to do with blob md", type=int, default=0)
         sub_command.add_argument("--namespace", help='Set LVol namespace for k8s clients')
         sub_command.add_argument("--uid", help='Set LVol UUID')
         sub_command.add_argument("--pvc_name", help='Set LVol PVC name for k8s clients')
 
+        # snapshot backup
+        sub_command = self.add_sub_command(subparser, 'backup-snapshot', 'Asynchronously back up a snapshot')
+        sub_command.add_argument("--lvol-name", help="lvol uuid", type=str)
+        sub_command.add_argument("--timeout-us", help="secondary stg I/O timeout in us", type=int)
+        sub_command.add_argument("--dev-page-size", help="distrib page size in bytes", type=int)
+        sub_command.add_argument("--nmax-retries", help="max total retries across all flush jobs", type=int, default=4)
+        sub_command.add_argument("--nmax-flush-jobs", help="max parallel flush jobs", type=int, default=4)
+
+        # snapshot backup status
+        sub_command = self.add_sub_command(subparser, 'get-snapshot-backup-status', 'Get async snapshot backup status')
+        sub_command.add_argument("--lvol-name", help="lvol uuid", type=str)
+
+        # snapshot recovery
+        sub_command = self.add_sub_command(subparser, 'recover-snapshot', 'Restore snapshot into the new lvstore after AZ disaster')
+        sub_command.add_argument("--lvs-name", help="new lvstore name", type=str)
+        sub_command.add_argument("--orig-name", help="user-provided name of the original snapshot", type=str)
+        sub_command.add_argument("--orig-uuid", help="uuid of the original snapshot lvol", type=str)
+        sub_command.add_argument("--clear-method", help="any valid clear method", type=int)
+        sub_command.add_argument("--id-of-blob-to-recover", help="id of the original snapshot blob", type=int)
+
+        # snapshot restore
 
         # set lvol params
         sub_command = self.add_sub_command(subparser, 'qos-set', 'Change qos settings for an active logical volume')
@@ -784,6 +817,12 @@ class CLIWrapper:
                 namespace = args.namespace
                 ha_jm_count = args.ha_jm_count
 
+                secondary_stg_name = args.secondary_stg_name
+                secondary_io_timeout_us = args.secondary_io_timeout_us
+                ghost_capacity = args.ghost_capacity
+                fifo_small_capacity = args.fifo_small_capacity
+                fifo_main_capacity = args.fifo_main_capacity
+
                 out = storage_ops.add_node(
                     cluster_id=cluster_id,
                     node_ip=node_ip,
@@ -808,6 +847,11 @@ class CLIWrapper:
                     id_device_by_nqn=args.id_device_by_nqn,
                     partition_size=args.partition_size,
                     ha_jm_count=ha_jm_count,
+                    secondary_stg_name=secondary_stg_name,
+                    secondary_io_timeout_us=secondary_io_timeout_us,
+                    ghost_capacity=ghost_capacity,
+                    fifo_main_capacity=fifo_small_capacity,
+                    fifo_main_capacity=fifo_main_capacity
                 )
 
                 return out
@@ -1068,13 +1112,23 @@ class CLIWrapper:
                     crypto_key1=args.crypto_key1,
                     crypto_key2=args.crypto_key2,
                     lvol_priority_class=lvol_priority_class,
-                    uid=args.uid, pvc_name=args.pvc_name, namespace=args.namespace)
+                    uid=args.uid, pvc_name=args.pvc_name, namespace=args.namespace,
+                    is_tiered=args.is_tiered, force_fetch=args.force_fetch, sync_fetch=args.sync_fetch, 
+                    pure_flush_or_evict=args.pure_flush_or_evict, not_evict_blob_md=args.not_evict_blob_md)
                 if results:
                     ret = results
                 else:
                     ret = error
             elif sub_command == "add-distr":
                 pass
+            elif sub_command == "backup-snapshot":
+                ret = lvol_controller.backup_snapshot(args.lvol_name, args.timeout_us, args.dev_page_size,
+                                                      args.nmax_retries, args.nmax_flush_jobs)
+            elif sub_command == 'get-snapshot-backup-status':
+                ret = lvol_controller.get_snapshot_backup_status(args.lvol_name)
+            elif sub_command == 'recover-snapshot':
+                ret = lvol_controller.restore_snapshot(args.lvs_name, args.orig_name, args.orig_uuid, 
+                                                       args.clear_method, args.id_of_blob_to_recover)
             elif sub_command == "qos-set":
                 ret = lvol_controller.set_lvol(
                     args.id, args.max_rw_iops, args.max_rw_mbytes,
@@ -1312,11 +1366,14 @@ class CLIWrapper:
         enable_qos = args.enable_qos
         strict_node_anti_affinity = args.strict_node_anti_affinity
 
+        support_storage_tiering = args.support_storage_tiering
+        disaster_recovery = args.disaster_recovery
 
         return cluster_ops.add_cluster(
             blk_size, page_size_in_blocks, cap_warn, cap_crit, prov_cap_warn, prov_cap_crit,
             distr_ndcs, distr_npcs, distr_bs, distr_chunk_bs, ha_type, enable_node_affinity,
-            qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity)
+            qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity,
+            support_storage_tiering, disaster_recovery)
 
 
     def cluster_create(self, args):

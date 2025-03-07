@@ -321,6 +321,25 @@ def get_random_vuid():
         r = 1 + int(random.random() * 10000)
     return r
 
+def get_random_storage_tiering_id():
+    from simplyblock_core.db_controller import DBController
+    db_controller = DBController()
+    used_storage_tiering_ids = []
+    nodes = db_controller.get_storage_nodes()
+    for node in nodes:
+        for bdev in node.lvstore_stack:
+            type = bdev['type']
+            if type == "bdev_distr":
+                storage_tiering_id = bdev['params']['storage_tiering_id']
+            else:
+                continue
+            used_storage_tiering_ids.append(storage_tiering_id)
+
+    r = (1 + int(random.random() * 10000)) % (2**16 - 1)
+    while r in used_storage_tiering_ids:
+        r = (1 + int(random.random() * 10000)) % (2**16 - 1)
+    return r
+
 
 def calculate_core_allocation(cpu_count):
     '''
