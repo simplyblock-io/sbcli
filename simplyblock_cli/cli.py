@@ -479,6 +479,10 @@ class CLIWrapper:
         sub_command.add_argument("--uid", help='Set LVol UUID')
         sub_command.add_argument("--pvc_name", help='Set LVol PVC name for k8s clients')
 
+        # get blobid
+        sub_command = self.add_sub_command(subparser, 'get-lvol-blobid', 'Get the blob ID of an lvol (used for snapshots to back up)')
+        sub_command.add_argument("--lvol-name", help="lvol uuid", type=str)
+
         # snapshot backup
         sub_command = self.add_sub_command(subparser, 'backup-snapshot', 'Asynchronously back up a snapshot')
         sub_command.add_argument("--lvol-name", help="lvol uuid", type=str)
@@ -1121,6 +1125,8 @@ class CLIWrapper:
                     ret = error
             elif sub_command == "add-distr":
                 pass
+            elif sub_command == 'get-lvol-blobid':
+                ret = lvol_controller.get_blobid(args.lvol_name)
             elif sub_command == "backup-snapshot":
                 ret = lvol_controller.backup_snapshot(args.lvol_name, args.timeout_us, args.dev_page_size,
                                                       args.nmax_retries, args.nmax_flush_jobs)
