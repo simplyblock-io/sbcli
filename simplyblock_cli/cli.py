@@ -261,6 +261,25 @@ class CLIWrapper:
         sub_command = self.add_sub_command(subparser, 'dump-lvstore','Dump lvstore data')
         sub_command.add_argument("id", help='UUID of storage node').completer = self._completer_get_sn_list
 
+
+        # S3 bdev for tiering
+
+        sub_command = self.add_sub_command(subparser, 's3-bdev-create', 'Create a local S3 bdev for tiering (otherwise can connect to an existing remote one over fabric)')
+        sub_command.add_argument("id", help='UUID of storage node').completer = self._completer_get_sn_list
+        sub_command.add_argument("--name", 'S3 bdev name', type=str)
+        sub_command.add_argument("--bdb-lcpu-mask", 'S3 bdev SPDK thread mask', type=int, default=0)
+        sub_command.add_argument("--s3-lcpu-mask", 'S3 bdev worker pthread mask', type=int, default=0)
+        sub_command.add_argument("--s3-thread-pool-size", 'S3 bdev worker pthread pool size', type=int, default=32)
+
+        sub_command = self.add_sub_command(subparser, 's3-bdev-delete', 'Delete a local S3 bdev')
+        sub_command.add_argument("id", help='UUID of storage node').completer = self._completer_get_sn_list
+        sub_command.add_argument("--name", 'S3 bdev name', type=str)
+
+        sub_command = self.add_sub_command(subparser, 's3-bdev-add-bucket-name', 'Register a bucket name in the local S3 bdev if a bucket was newly added to the S3 endpoint')
+        sub_command.add_argument("id", help='UUID of storage node').completer = self._completer_get_sn_list
+        sub_command.add_argument("--name", 'S3 bdev name', type=str)
+        sub_command.add_argument("--bucket-name", 'S3 bucket name', type=str)
+
         # check lvol
         #
         # ----------------- cluster -----------------
@@ -341,6 +360,11 @@ class CLIWrapper:
         sub_command.add_argument("--strict-node-anti-affinity", help='Enable strict node anti affinity for storage nodes', action='store_true')
         sub_command.add_argument("--support-storage-tiering", help="Whether to support storage tiering", type=bool, default=False)
         sub_command.add_argument("--disaster-recovery", help="AZ disaster recovery mode", type=bool, default=False)
+
+        # toggle disaster recovery status
+        sub_command = self.add_sub_command(subparser, 'toggle-disaster-recovery-status', 'Toggle AZ disaster recovery status')
+        sub_command.add_argument("cluster_id", help='the cluster UUID').completer = self._completer_get_cluster_list
+        sub_command.add_argument("--disaster-recovery", help="AZ disaster recovery status", type=bool)
 
         # Activate cluster
         sub_command = self.add_sub_command(subparser, 'activate', 'Create distribs and raid0 bdevs on all the storage node and move the cluster to active state')
@@ -474,7 +498,7 @@ class CLIWrapper:
         sub_command.add_argument("--force-fetch", help="fetches are forced", type=bool, default=False)
         sub_command.add_argument("--sync-fetch", help="reads require synchronous fetches", type=bool, default=True)
         sub_command.add_argument("--pure-flush-or-evict", help="pure flush or evict", type=bool, default=False)
-        sub_command.add_argumetn("--not-evict-blob-md", help="what to do with blob md", type=int, default=0)
+        sub_command.add_argument("--not-evict-blob-md", help="what to do with blob md", type=int, default=0)
         sub_command.add_argument("--namespace", help='Set LVol namespace for k8s clients')
         sub_command.add_argument("--uid", help='Set LVol UUID')
         sub_command.add_argument("--pvc_name", help='Set LVol PVC name for k8s clients')
@@ -503,7 +527,27 @@ class CLIWrapper:
         sub_command.add_argument("--clear-method", help="any valid clear method", type=int)
         sub_command.add_argument("--id-of-blob-to-recover", help="id of the original snapshot blob", type=int)
 
-        # snapshot restore
+        # set lvol tiering modes
+        sub_command = self.add_sub_command(subparser, 'set-tiering-modes', 'Set tiering modes of an lvol')
+        sub_command.add_argument("--is-tiered", help="sends tiered I/O", type=bool)
+        sub_command.add_argument("--force-fetch", help="fetches are forced", type=bool)
+        sub_command.add_argument("--sync-fetch", help="reads require synchronous fetches", type=bool)
+        sub_command.add_argument("--pure-flush-or-evict", help="pure flush or evict", type=bool)
+        #sub_command.add_argument("--not-evict-blob-md", help="what to do with blob md", type=int)
+
+        # update page list capacities
+        sub_command = self.add_sub_command(subparser, 'set-distr-cache-capacities', 'Set storage tiering page list capacities of a distrib')
+        sub_command.add_argument("--lvol-uuid", help="lvol uuid", type=str)
+        sub_command.add_argument("--distr-name", help="distrib bdev name", type=str)
+        sub_command.add_argument("--ghost-capacity", help="ghost queue capacity", type=str)
+        sub_command.add_argument("--fifo-main-capacity", help="main fifo queue capacity", type=str)
+        sub_command.add_argument("--fifo-small-capacity", help="small fifo queue capacity", type=str)
+
+        # update secondary I/O timeout value
+        sub_command = self.add_sub_command(subparser, 'set-distr-secondary-io-timeout', 'Set secondary stg I/O timeout in us for a distrib')
+        sub_command.add_arugment("--lvol-uuid", help="lvol uuid", type=str)
+        sub_command.add_argument("--distr-name", help="distrib bdev name", type=str)
+        sub_command.add_argument("--secondary-io-timeout-us", help="secondary stg I/O timeout in us", type=int)
 
         # set lvol params
         sub_command = self.add_sub_command(subparser, 'qos-set', 'Change qos settings for an active logical volume')
@@ -593,8 +637,7 @@ class CLIWrapper:
         sub_command = self.add_sub_command(subparser, 'inflate', 'Inflate a logical volume',
                                            usage='All unallocated clusters are allocated and copied from the parent or zero filled if not allocated in the parent. '
                                                  'Then all dependencies on the parent are removed.')
-        sub_command.add_argument("lvol_id", help='cloned lvol id')
-
+        sub_command.add_argument("lvol_id", help='cloned lvol id')   
         # mgmt-node ops
         subparser = self.add_command('mgmt', 'Management node commands')
 
@@ -987,6 +1030,18 @@ class CLIWrapper:
             elif sub_command == "info-spdk":
                 node_id = args.id
                 ret = storage_ops.get_spdk_info(node_id)
+            
+            elif sub_command == "s3-bdev-create":
+                node_id = args.id
+                ret = storage_ops.s3_bdev_create(node_id, args.name, args.bdb_lcpu_mask, args.s3_lcpu_mask, args.s3_thread_pool_size)
+
+            elif sub_command == "s3-bdev-delete":
+                node_id = args.id
+                ret = storage_ops.s3_bdev_delete(node_id, args.name)
+            
+            elif sub_command == "s3-bdev-add-bucket-name":
+                node_id = args.id
+                ret = storage_ops.s3_bdev_add_bucket_name(node_id, args.name, args.bucket_name)
 
             elif sub_command == "get":
                 ret = storage_ops.get(args.id)
@@ -1018,6 +1073,8 @@ class CLIWrapper:
                 ret = self.cluster_create(args)
             elif sub_command == 'add':
                 ret = self.cluster_add(args)
+            elif sub_command == 'toggle-disaster-recovery-status':
+                ret = self.cluster_toggle_disaster_recovery_status(args)
             elif sub_command == 'activate':
                 cluster_id = args.cluster_id
                 ret = cluster_ops.cluster_activate(cluster_id, args.force, args.force_lvstore_create)
@@ -1135,6 +1192,14 @@ class CLIWrapper:
             elif sub_command == 'recover-snapshot':
                 ret = lvol_controller.restore_snapshot(args.lvs_name, args.orig_name, args.orig_uuid, 
                                                        args.clear_method, args.id_of_blob_to_recover)
+            elif sub_command == 'set-tiering-modes':
+                ret = lvol_controller.set_tiering_modes(args.lvol_uuid, args.is_tiered, args.force_fetch, args.sync_fetch, 
+                                                        args.pure_flush_or_evict, True)
+            elif sub_command == 'set-distr-cache-capacities':
+                ret = lvol_controller.set_distr_cache_capacities(args.lvol_uuid, args.distr_name, 
+                                                                 args.ghost_capacity, args.fifo_main_capacity, args.fifo_small_capacity)
+            elif sub_command == 'set-distr-secondary-io-timeout':
+                ret = lvol_controller.set_distr_timeout_us(args.lvol_uuid, args.distr_name, args.secondary_io_timeout_us)
             elif sub_command == "qos-set":
                 ret = lvol_controller.set_lvol(
                     args.id, args.max_rw_iops, args.max_rw_mbytes,
@@ -1381,6 +1446,9 @@ class CLIWrapper:
             qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity,
             support_storage_tiering, disaster_recovery)
 
+    def cluster_toggle_disaster_recovery_status(self, args):
+        cluster_id = args.cluster_id
+        disaster_recovery = args.disaster_recovery
 
     def cluster_create(self, args):
         page_size_in_blocks = args.page_size
