@@ -646,6 +646,31 @@ def parse_size(size_string: str):
         return -1
 
 
+def convert_size(size: int, unit: str) -> int:
+    """Convert the given number of bytes to target unit
+
+    Accepts both decimal (kB, MB, ...) and binary (KiB, MiB, ...) units.
+    Note that the result will be cast to int, i.e. rounded down.
+    """
+    regex = r'^((?P<prefix>[kKMGTPEZ])(?P<binary>i)?)?B$'
+
+    m = re.match(regex, unit)
+    if m is None:
+        raise ValueError("Invalid unit")
+
+    binary = m.group('binary') is not None
+    prefix = m.group('prefix') or ''
+
+    if (binary and (prefix == 'k')) or ((not binary) and (prefix == 'K')):
+        raise ValueError("Invalid unit")
+
+    exponent_multipliers = ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']
+    base = 2 if binary else 10
+    exponent = (10 if binary else 3) * exponent_multipliers.index(prefix.upper())
+
+    return int(size / (base ** exponent))
+
+
 def nearest_upper_power_of_2(n):
     # Check if n is already a power of 2
     if (n & (n - 1)) == 0:
