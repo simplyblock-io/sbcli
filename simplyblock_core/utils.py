@@ -116,6 +116,8 @@ def humanbytes(B):
         return '{0:.1f} GB'.format(B / GB)
     elif TB <= B:
         return '{0:.1f} TB'.format(B / TB)
+    else:
+        raise ValueError("Size representation failed")
 
 
 def generate_string(length):
