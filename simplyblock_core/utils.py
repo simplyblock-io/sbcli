@@ -100,11 +100,12 @@ def humanbytes(B):
     """Return the given bytes as a human friendly KB, MB, GB, or TB string."""
     if not B:
         return "0"
+
     B = float(B)
-    KB = float(constants.ONE_KB)
-    MB = float(KB ** 2) # 1,048,576
-    GB = float(KB ** 3) # 1,073,741,824
-    TB = float(KB ** 4) # 1,099,511,627,776
+    KB = 1e3
+    MB = 1e6
+    GB = 1e9
+    TB = 1e12
 
     if B < KB:
         return '{0} {1}'.format(B, 'Byte' if B == 1 else 'Bytes')
@@ -625,7 +626,6 @@ def parse_size(size_string: str):
             size_string = size_string.replace("b", "")
             size_number = int(size_string[:-1])
             size_v = size_string[-1]
-            one_k = constants.ONE_KB
             multi = 0
             if size_v == "k":
                 multi = 1
@@ -638,7 +638,7 @@ def parse_size(size_string: str):
             else:
                 print(f"Error parsing size: {size_string}")
                 return -1
-            return size_number * math.pow(one_k, multi)
+            return size_number * 10 ** (3 * multi)
         else:
             return -1
     except:
