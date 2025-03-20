@@ -646,10 +646,11 @@ def parse_size(size_string: str):
         return -1
 
 
-def convert_size(size: int, unit: str) -> float:
+def convert_size(size: int, unit: str) -> int:
     """Convert the given number of bytes to target unit
 
     Accepts both decimal (kB, MB, ...) and binary (KiB, MiB, ...) units.
+    Note that the result will be cast to int, i.e. rounded down.
     """
     regex = r'^((?P<prefix>[kKMGTPEZ])(?P<binary>i)?)?B$'
 
@@ -667,7 +668,7 @@ def convert_size(size: int, unit: str) -> float:
     base = 2 if binary else 10
     exponent = (10 if binary else 3) * exponent_multipliers.index(prefix.upper())
 
-    return size / (base ** exponent)
+    return int(size / (base ** exponent))
 
 
 def nearest_upper_power_of_2(n):

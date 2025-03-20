@@ -13,6 +13,7 @@ from docker.types import LogConfig
 from flask import Blueprint
 from flask import request
 
+from simplyblock_core.utils import convert_size
 from simplyblock_web import utils, node_utils
 
 from simplyblock_core import scripts, constants, shell_utils
@@ -130,7 +131,7 @@ def spdk_process_start():
         except:
             pass
 
-    spdk_mem_mb = (utils.convert_size(utils.parse_size(data['spdk_mem']), 'MB')
+    spdk_mem_mb = (convert_size(utils.parse_size(data['spdk_mem']), 'MB')
             if 'spdk_mem' in data else 4000)
 
     node_docker = get_docker_client()
