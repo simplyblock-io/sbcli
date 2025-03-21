@@ -100,14 +100,15 @@ def humanbytes(B):
     """Return the given bytes as a human friendly KB, MB, GB, or TB string."""
     if not B:
         return "0"
+
     B = float(B)
-    KB = float(constants.ONE_KB)
-    MB = float(KB ** 2) # 1,048,576
-    GB = float(KB ** 3) # 1,073,741,824
-    TB = float(KB ** 4) # 1,099,511,627,776
+    KB = 1e3
+    MB = 1e6
+    GB = 1e9
+    TB = 1e12
 
     if B < KB:
-        return '{0} {1}'.format(B, 'Bytes' if 0 == B > 1 else 'Byte')
+        return '{0} {1}'.format(B, 'Byte' if B == 1 else 'Bytes')
     elif KB <= B < MB:
         return '{0:.1f} KB'.format(B / KB)
     elif MB <= B < GB:
@@ -116,6 +117,8 @@ def humanbytes(B):
         return '{0:.1f} GB'.format(B / GB)
     elif TB <= B:
         return '{0:.1f} TB'.format(B / TB)
+    else:
+        raise ValueError("Size representation failed")
 
 
 def generate_string(length):
@@ -623,7 +626,6 @@ def parse_size(size_string: str):
             size_string = size_string.replace("b", "")
             size_number = int(size_string[:-1])
             size_v = size_string[-1]
-            one_k = constants.ONE_KB
             multi = 0
             if size_v == "k":
                 multi = 1
@@ -636,12 +638,37 @@ def parse_size(size_string: str):
             else:
                 print(f"Error parsing size: {size_string}")
                 return -1
-            return size_number * math.pow(one_k, multi)
+            return size_number * 10 ** (3 * multi)
         else:
             return -1
     except:
         print(f"Error parsing size: {size_string}")
         return -1
+
+
+def convert_size(size: int, unit: str) -> int:
+    """Convert the given number of bytes to target unit
+
+    Accepts both decimal (kB, MB, ...) and binary (KiB, MiB, ...) units.
+    Note that the result will be cast to int, i.e. rounded down.
+    """
+    regex = r'^((?P<prefix>[kKMGTPEZ])(?P<binary>i)?)?B$'
+
+    m = re.match(regex, unit)
+    if m is None:
+        raise ValueError("Invalid unit")
+
+    binary = m.group('binary') is not None
+    prefix = m.group('prefix') or ''
+
+    if (binary and (prefix == 'k')) or ((not binary) and (prefix == 'K')):
+        raise ValueError("Invalid unit")
+
+    exponent_multipliers = ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']
+    base = 2 if binary else 10
+    exponent = (10 if binary else 3) * exponent_multipliers.index(prefix.upper())
+
+    return int(size / (base ** exponent))
 
 
 def nearest_upper_power_of_2(n):
