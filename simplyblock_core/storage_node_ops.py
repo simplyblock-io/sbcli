@@ -82,12 +82,7 @@ def _get_if_ip_address(ifname):
     logger.error("IP not found for interface %s", ifname)
     exit(1)
 
-
-def addNvmeDevices(snode, devs):
-    rpc_client = RPCClient(
-        snode.mgmt_ip, snode.rpc_port,
-        snode.rpc_username, snode.rpc_password, timeout=60, retry=10)
-
+def addNvmeDevices(rpc_client, snode, devs):
     devices = []
     ret = rpc_client.bdev_nvme_controller_list()
     ctr_map = {}
@@ -110,10 +105,6 @@ def addNvmeDevices(snode, devs):
             pci_st = str(pcie).replace("0", "").replace(":", "").replace(".", "")
             nvme_controller = "nvme_%s" % pci_st
             nvme_bdevs, err = rpc_client.bdev_nvme_controller_attach(nvme_controller, pcie)
-            # time.sleep(1)
-
-        if not nvme_bdevs:
-            continue
 
         for nvme_bdev in nvme_bdevs:
             rpc_client.bdev_examine(nvme_bdev)
@@ -1331,7 +1322,7 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
     #     snode.ssd_pcie = node_info['spdk_pcie_list']
     #     snode.write_to_db()
     # discover devices
-    nvme_devs = addNvmeDevices(snode, snode.ssd_pcie)
+    nvme_devs = addNvmeDevices(rpc_client, snode, snode.ssd_pcie)
     if nvme_devs:
 
         if not is_secondary_node:
@@ -1853,8 +1844,7 @@ def restart_storage_node(
             return False
 
     if not snode.is_secondary_node:   # pass
-
-        nvme_devs = addNvmeDevices(snode, snode.ssd_pcie)
+        nvme_devs = addNvmeDevices(rpc_client, snode, snode.ssd_pcie)
         if not nvme_devs:
             logger.error("No NVMe devices was found!")
             return False
