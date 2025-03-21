@@ -26,6 +26,11 @@ jobs:
         python -m pip install --upgrade pip setuptools build
         pip install -r requirements.txt
 
+    - name: Checking cli.py status
+      run: |
+        ./scripts/generate.sh
+        [[ "$(git diff simplyblock_cli/cli.py)" ]] && echo "cli.py has changed after regeneration. Stopping." && exit 1 
+
     - name: Install package
       run: python setup.py install
 
