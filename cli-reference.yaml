@@ -900,7 +900,7 @@ commands:
           - name: "--lvol-size"
             help: "Logical volume size: 10M, 10G, 10(bytes)"
             dest: lvol_size
-            type: str
+            type: size
             default: 10G
             private: true
           - name: "--pool-name"
@@ -912,7 +912,7 @@ commands:
           - name: "--pool-max"
             help: "Pool maximum size: 20M, 20G, 0(default)"
             dest: pool_max
-            type: str
+            type: size
             default: 25G
             private: true
           - name: "--snapshot"
@@ -927,7 +927,7 @@ commands:
           - name: "--max-volume-size"
             help: "Logical volume max size"
             dest: max_size
-            type: str
+            type: size
             default: 1000G
             private: true
           - name: "--host-id"
@@ -1435,7 +1435,7 @@ commands:
           - name: "size"
             help: "Logical volume size: 10M, 10G, 10(bytes)"
             dest: size
-            type: str
+            type: size
           - name: "pool"
             help: "Pool id or name"
             dest: pool
@@ -1451,7 +1451,7 @@ commands:
           - name: "--max-size"
             help: "Logical volume max size"
             dest: max_size
-            type: str
+            type: size
             default: "1000T"
           - name: "--host-id"
             help: "Primary storage node id or Hostname"
@@ -1626,7 +1626,7 @@ commands:
           - name: "size"
             help: "New logical volume size size: 10M, 10G, 10(bytes)"
             dest: size
-            type: str
+            type: size
       - name: create-snapshot
         help: "Creates a snapshot from a logical volume"
         arguments:
@@ -1652,7 +1652,8 @@ commands:
           - name: "--resize"
             help: "New logical volume size: 10M, 10G, 10(bytes). Can only increase."
             dest: resize
-            type: str
+            type: size
+            default: "0"
       - name: move
         help: "Moves a full copy of the logical volume between nodes"
         private: true
@@ -1775,13 +1776,13 @@ commands:
           - name: "--pool-max"
             help: "Pool maximum size: 20M, 20G, 0. Default: 0"
             dest: pool_max
-            type: str
-            default: 0
+            type: size
+            default: "0"
           - name: "--lvol-max"
             help: "Logical volume maximum size: 20M, 20G, 0. Default: 0"
             dest: lvol_max
-            type: str
-            default: 0
+            type: size
+            default: "0"
           - name: "--max-rw-iops"
             help: "Maximum Read Write IO Per Second"
             dest: max_rw_iops
@@ -1814,11 +1815,11 @@ commands:
           - name: "--pool-max"
             help: "Pool maximum size: 20M, 20G"
             dest: pool_max
-            type: str
+            type: size
           - name: "--lvol-max"
             help: "Logical volume maximum size: 20M, 20G"
             dest: lvol_max
-            type: str
+            type: size
           - name: "--max-rw-iops"
             help: "Maximum Read Write IO Per Second"
             dest: max_rw_iops
@@ -1953,7 +1954,8 @@ commands:
           - name: "--resize"
             help: "New logical volume size: 10M, 10G, 10(bytes)"
             dest: resize
-            type: str
+            type: size
+            default: "0"
   - name: "caching-node"
     help: "Caching node commands"
     aliases:
@@ -1997,7 +1999,9 @@ commands:
           - name: "--memory"
             help: "SPDK huge memory allocation. By default it will acquire all available huge pages."
             dest: spdk_mem
-            type: int
+            type:
+              size:
+                min: 1G
             private: true
           - name: "--spdk-image"
             help: "SPDK image uri"

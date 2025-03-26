@@ -171,11 +171,23 @@ properties:
                             - int
                             - str
                             - bool
+                            - size
                         - type: object
                           additionalProperties: false
                           properties:
                             regex:
                               type: string
+                        - type: object
+                          additionalProperties: false
+                          minProperties: 1
+                          properties:
+                            size:
+                              type: object
+                              properties:
+                                min:
+                                  type: string
+                                max:
+                                  type: string
                     completer:
                       type: string
                       description: The completer value of the positional argument or parameter.
