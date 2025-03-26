@@ -23,7 +23,6 @@ commands:
           - name: "--cpu-mask"
             help: "SPDK app CPU mask, default is all cores found"
             dest: "spdk_cpu_mask"
-            required: false
             type: str
           - name: "--isolate-cores"
             help: "Isolate cores in kernel args for provided cpu mask"
