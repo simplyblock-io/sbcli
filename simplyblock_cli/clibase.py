@@ -16,6 +16,16 @@ from simplyblock_core.controllers import caching_node_controller, health_control
 from simplyblock_core.models.pool import Pool
 
 
+def regex_type(regex):
+    def f(arg):
+        if (match := re.match(regex, arg)) is not None:
+            return match
+        else:
+            raise argparse.ArgumentTypeError(f"Argument '{arg}' invalid: does not match regex ({regex})")
+
+    return f
+
+
 class CLIWrapperBase:
 
     def __init__(self):
@@ -38,12 +48,7 @@ class CLIWrapperBase:
         return parent_parser.add_parser(command, description=help, help=help, usage=usage)
 
     def storage_node__deploy(self, sub_command, args):
-        spdk_cpu_mask = None
-        if args.spdk_cpu_mask:
-            if self.validate_cpu_mask(args.spdk_cpu_mask):
-                spdk_cpu_mask = args.spdk_cpu_mask
-            else:
-                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
+        spdk_cpu_mask = args.spdk_cpu_mask if 'spdk_cpu_mask' in args else None
         isolate_cores = args.isolate_cores
         return storage_ops.deploy(args.ifname, spdk_cpu_mask, isolate_cores)
 
@@ -62,13 +67,7 @@ class CLIWrapperBase:
         large_bufsize = args.large_bufsize
         num_partitions_per_dev = args.partitions
         jm_percent = args.jm_percent
-        spdk_cpu_mask = None
-        if args.spdk_cpu_mask:
-            if self.validate_cpu_mask(args.spdk_cpu_mask):
-                spdk_cpu_mask = args.spdk_cpu_mask
-            else:
-                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
-
+        spdk_cpu_mask = args.spdk_cpu_mask if 'spdk_cpu_mask' in args else None
         max_lvol = args.max_lvol
         max_snap = args.max_snap
         max_prov = utils.parse_size(args.max_prov, unit='G')
@@ -566,13 +565,7 @@ class CLIWrapperBase:
         spdk_image = args.spdk_image
         namespace = args.namespace
         multipathing = args.multipathing == "on"
-
-        spdk_cpu_mask = None
-        if args.spdk_cpu_mask:
-            if self.validate_cpu_mask(args.spdk_cpu_mask):
-                spdk_cpu_mask = args.spdk_cpu_mask
-            else:
-                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
+        spdk_cpu_mask = args.spdk_cpu_mask if 'spdk_cpu_mask' in args else None
 
         spdk_mem = None
         if args.spdk_mem:
@@ -679,15 +672,7 @@ class CLIWrapperBase:
         num_partitions_per_dev = args.partitions
         partition_size = args.partition_size
         jm_percent = args.jm_percent
-        spdk_cpu_mask = None
-        if args.spdk_cpu_mask:
-            if self.validate_cpu_mask(args.spdk_cpu_mask):
-                spdk_cpu_mask = args.spdk_cpu_mask
-            else:
-                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
-
-        
-
+        spdk_cpu_mask = args.spdk_cpu_mask if 'spdk_cpu_mask' in args else None
         max_lvol = args.max_lvol
         max_snap = args.max_snap
         max_prov = utils.parse_size(args.max_prov, unit='G')
@@ -792,9 +777,6 @@ class CLIWrapperBase:
                 return valid[choice]
             else:
                 sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
-
-    def validate_cpu_mask(self, spdk_cpu_mask):
-        return re.match("^(0x|0X)?[a-fA-F0-9]+$", spdk_cpu_mask)
 
     def _completer_get_cluster_list(self, prefix, parsed_args, **kwargs):
         db = db_controller.DBController()
