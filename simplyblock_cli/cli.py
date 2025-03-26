@@ -92,8 +92,8 @@ class CLIWrapper(CLIWrapperBase):
         if self.developer_mode:
             argument = subcommand.add_argument('--jm-percent', help='Number in percent to use for JM from each device', type=int, default=3, dest='jm_percent', required=False)
         argument = subcommand.add_argument('--data-nics', help='Storage network interface name(s). Can be more than one.', type=str, dest='data_nics', required=False, nargs='+')
-        argument = subcommand.add_argument('--max-lvol', help='Max logical volume per storage node', type=int, dest='max_lvol', required=False)
-        argument = subcommand.add_argument('--max-size', help='Maximum amount of GB to be utilized on this storage node', type=str, dest='max_prov', required=False)
+        argument = subcommand.add_argument('--max-lvol', help='Max logical volume per storage node', type=int, dest='max_lvol', required=True)
+        argument = subcommand.add_argument('--max-size', help='Maximum amount of GB to be utilized on this storage node', type=str, dest='max_prov', required=True)
         if self.developer_mode:
             argument = subcommand.add_argument('--number-of-distribs', help='The number of distirbs to be created on the node', type=int, default=4, dest='number_of_distribs', required=False)
         argument = subcommand.add_argument('--number-of-devices', help='Number of devices per storage node if it\'s not supported EC2 instance', type=int, dest='number_of_devices', required=False)

@@ -71,6 +71,7 @@ commands:
           - name: "--max-lvol"
             help: "Max logical volume per storage node"
             dest: max_lvol
+            required: true
             type: int
           - name: "--max-size"
             help: "Maximum amount of GB to be utilized on this storage node"
@@ -81,6 +82,7 @@ commands:
               (two replicas), the effective cluster capacity is _100 TiB * 3 / 2 = 150 TiB_. Setting this parameter to
               _150 TiB / 3 * 2 = 100TiB_ would be a safe choice.
             dest: max_prov
+            required: true
             type: str
           - name: "--number-of-distribs"
             help: "The number of distirbs to be created on the node"
