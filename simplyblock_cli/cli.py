@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 
-from simplyblock_cli.clibase import CLIWrapperBase
+from simplyblock_cli.clibase import CLIWrapperBase, regex_type
 from simplyblock_core import utils
 import logging
 import sys
@@ -77,7 +77,7 @@ class CLIWrapper(CLIWrapperBase):
     def init_storage_node__deploy(self, subparser):
         subcommand = self.add_sub_command(subparser, 'deploy', 'Prepares a host to be used as a storage node')
         argument = subcommand.add_argument('--ifname', help='Management interface name, e.g. eth0', type=str, dest='ifname', required=False)
-        argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=str, dest='spdk_cpu_mask', required=False)
+        argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=regex_type(r'^(0x|0X)?[a-fA-F0-9]+$'), required=False)
         argument = subcommand.add_argument('--isolate-cores', help='Isolate cores in kernel args for provided cpu mask', default=False, dest='isolate_cores', required=False, action='store_true')
 
     def init_storage_node__deploy_cleaner(self, subparser):
@@ -101,7 +101,7 @@ class CLIWrapper(CLIWrapperBase):
             argument = subcommand.add_argument('--size-of-device', help='Size of device per storage node', type=str, dest='partition_size', required=False)
         argument = subcommand.add_argument('--vcpu-count', help='Number of vCPUs used for SPDK. Remaining CPUs will be used for Linux system, TCP/IP processing, and other workloads. The default on non-Kubernetes hosts is 80%%.', type=int, dest='vcpu_count', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=str, dest='spdk_cpu_mask', required=False)
+            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=regex_type(r'^(0x|0X)?[a-fA-F0-9]+$'), dest='spdk_cpu_mask', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--spdk-image', help='SPDK image uri', type=str, dest='spdk_image', required=False)
         if self.developer_mode:
@@ -362,7 +362,7 @@ class CLIWrapper(CLIWrapperBase):
             argument = subcommand.add_argument('--size-of-device', help='Size of device per storage node', type=str, dest='partition_size', required=False)
         argument = subcommand.add_argument('--vcpu-count', help='Number of vCPUs used for SPDK. Remaining CPUs will be used for Linux system, TCP/IP processing, and other workloads. The default on non-Kubernetes hosts is 80%%.', type=int, dest='vcpu_count', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=str, dest='spdk_cpu_mask', required=False)
+            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=regex_type(r'^(0x|0X)?[a-fA-F0-9]+$'), dest='spdk_cpu_mask', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--spdk-image', help='SPDK image uri', type=str, dest='spdk_image', required=False)
         if self.developer_mode:
@@ -815,7 +815,7 @@ class CLIWrapper(CLIWrapperBase):
         subcommand.add_argument('ifname', help='Management interface name', type=str)
         argument = subcommand.add_argument('--vcpu-count', help='Number of vCPUs used for SPDK. Remaining CPUs will be used for Linux system, TCP/IP processing, and other workloads. The default on non-Kubernetes hosts is 80%%.', type=int, dest='vcpu_count', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=str, dest='spdk_cpu_mask', required=False)
+            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=regex_type(r'^(0x|0X)?[a-fA-F0-9]+$'), dest='spdk_cpu_mask', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--memory', help='SPDK huge memory allocation. By default it will acquire all available huge pages.', type=int, dest='spdk_mem', required=False)
         if self.developer_mode:

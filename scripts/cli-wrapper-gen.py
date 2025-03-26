@@ -3,6 +3,7 @@ import yaml
 import sys
 import re
 
+
 def is_parameter(item):
     return item["name"].startswith("--") or item["name"].startswith("-")
 
@@ -25,6 +26,14 @@ def select_parameters(items):
 
 def no_newline(text):
     return re.sub("\n", "", text)
+
+
+def argument_type(spec):
+    if isinstance(spec, dict) and ((regex := spec.get('regex')) is not None):
+        regex = escape_strings(regex)
+        return f"regex_type(r'{regex}')"
+
+    return spec
 
 
 def required(item):
