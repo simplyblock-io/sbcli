@@ -129,17 +129,17 @@ def scan_devices():
 
 
 def get_cluster_id():
-    out, _, _ = node_utils.run_command(f"cat {cluster_id_file}")
+    out, _, _ = shell_utils.run_command(f"cat {cluster_id_file}")
     return out
 
 
 def set_cluster_id(cluster_id):
-    out, _, _ = node_utils.run_command(f"echo {cluster_id} > {cluster_id_file}")
+    out, _, _ = shell_utils.run_command(f"echo {cluster_id} > {cluster_id_file}")
     return out
 
 
 def delete_cluster_id():
-    out, _, _ = node_utils.run_command(f"rm -f {cluster_id_file}")
+    out, _, _ = shell_utils.run_command(f"rm -f {cluster_id_file}")
     return out
 
 
@@ -319,7 +319,7 @@ def delete_gpt_partitions_for_dev():
 
 
 CPU_INFO = cpuinfo.get_cpu_info()
-HOSTNAME, _, _ = node_utils.run_command("hostname -s")
+HOSTNAME, _, _ = shell_utils.run_command("hostname -s")
 SYSTEM_ID = ""
 CLOUD_INFO = get_amazon_cloud_info()
 if not CLOUD_INFO:
@@ -331,7 +331,7 @@ if not CLOUD_INFO:
 if CLOUD_INFO:
     SYSTEM_ID = CLOUD_INFO["id"]
 else:
-    SYSTEM_ID, _, _ = node_utils.run_command("dmidecode -s system-uuid")
+    SYSTEM_ID, _, _ = shell_utils.run_command("dmidecode -s system-uuid")
 
 
 
@@ -471,7 +471,7 @@ def spdk_process_is_up():
 
 @bp.route('/get_file_content/<string:file_name>', methods=['GET'])
 def get_file_content(file_name):
-    out, err, _ = node_utils.run_command(f"cat /etc/simplyblock/{file_name}")
+    out, err, _ = shell_utils.run_command(f"cat /etc/simplyblock/{file_name}")
     if out:
         return utils.get_response(out)
     elif err:
