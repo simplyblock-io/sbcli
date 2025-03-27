@@ -88,8 +88,6 @@ class CLIWrapper(CLIWrapperBase):
         subcommand.add_argument('cluster_id', help='Cluster id', type=str)
         subcommand.add_argument('node_ip', help='IP of storage node to add', type=str)
         subcommand.add_argument('ifname', help='Management interface name', type=str)
-        subcommand.add_argument('storage_block_devices', help='Block devices to use for storage. Used in conjunction with --journal_block_device.', type=str, nargs='+')
-        subcommand.add_argument('journal_block_devices', help='Block device to use for the journal. Used in conjunction with --storage_block_devices.', type=str)
         argument = subcommand.add_argument('--journal-partition', help='1: auto-create small partitions for journal on nvme devices. 0: use a separate (the smallest) nvme device of the node for journal. The journal needs a maximum of 3 percent of total available raw disk space.', type=int, default=1, dest='partitions', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--jm-percent', help='Number in percent to use for JM from each device', type=int, default=3, dest='jm_percent', required=False)
@@ -123,6 +121,8 @@ class CLIWrapper(CLIWrapperBase):
             argument = subcommand.add_argument('--id-device-by-nqn', help='Use device nqn to identify it instead of serial number', dest='id_device_by_nqn', required=False, action='store_true')
         if self.developer_mode:
             argument = subcommand.add_argument('--max-snap', help='Max snapshot per storage node', type=int, default=5000, dest='max_snap', required=False)
+        argument = subcommand.add_argument('--storage-block-devices', help='Block devices to use for storage. Used in conjunction with --journal_block_device.', type=str, dest='storage_block_devices', required=False, nargs='+')
+        argument = subcommand.add_argument('--journal_block_device', help='Block device to use for the journal. Used in conjunction with --storage_block_devices.', type=str, dest='journal_block_device', required=False)
 
     def init_storage_node__delete(self, subparser):
         subcommand = self.add_sub_command(subparser, 'delete', 'Deletes a storage node object from the state database.')
