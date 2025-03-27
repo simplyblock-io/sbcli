@@ -247,11 +247,15 @@ def _get_block_device_size(block_device):
 
 
 def _block_device(db_controller, rpc_client, snode, block_device):
+    bdev = rpc_client.bdev_get_bdevs(
+            rpc_client.create_aio(block_device, 'aio_' + Path(block_device).name)
+    )
+
     device = NVMeDevice({
             'uuid': str(uuid.uuid4()),
-            'device_name': block_device,
-            'size': _get_block_device_size(block_device),
-            'nvme_bdev': rpc_client.create_aio(block_device, 'aio_' + Path(block_device).name),
+            'device_name': bdev['name'],
+            'size': bdev_details['num_blocks'] * bdev_details['block_size'],
+            'nvme_bdev': bdev['name'],
             'node_id': snode.get_id(),
             'cluster_id': snode.cluster_id,
             'cluster_device_order': get_next_cluster_device_order(db_controller, snode.cluster_id),
@@ -1051,6 +1055,10 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
         if jc_singleton_core:
             jc_singleton_mask = utils.decimal_to_hex_power_of_2(jc_singleton_core[0])
         jm_cpu_mask = utils.generate_mask(jm_cpu_core)
+
+
+    if len(storage_block_devices) > 0:
+        number_of_devices = len(storage_block_devices)
 
     # Calculate pool count
     if cloud_instance['type']:
