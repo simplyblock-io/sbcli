@@ -1359,7 +1359,7 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
             _block_device(db_controller, rpc_client, snode, block_device)
             for block_device in storage_block_devices
         ]
-        snode.jm_device = _create_jm_stack_on_device(rpc_client, journal_block_devices, snode, after_restart=False)
+        snode.jm_device = _create_jm_stack_on_device(rpc_client, journal_block_device, snode, after_restart=False)
 
     logger.info("Connecting to remote devices")
     remote_devices = _connect_to_remote_devs(snode)
