@@ -1677,6 +1677,9 @@ def restart_storage_node(
     if spdk_image:
         snode.spdk_image = spdk_image
 
+    if len(storage_block_devices) > 0:
+        number_of_devices = len(storage_block_devices)
+
     # Calculate pool count
     if snode.cloud_instance_type:
         supported_type, storage_devices, device_size = utils.get_total_size_per_instance_type(snode.cloud_instance_type)

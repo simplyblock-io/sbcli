@@ -181,7 +181,7 @@ commands:
             help: "Block devices to use for storage. Used in conjunction with --journal_block_device."
             type: str
             nargs: "+"
-          - name: "--journal_block_device"
+          - name: "--journal-block-device"
             dest: "journal_block_device"
             help: "Block device to use for the journal. Used in conjunction with --storage_block_devices."
             type: str
