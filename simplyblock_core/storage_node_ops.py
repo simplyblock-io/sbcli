@@ -238,14 +238,6 @@ def get_next_physical_device_order():
     return 0
 
 
-def _get_block_device_size(block_device):
-    stdout, stderr, code = shell_utils.run_command(f'blockdev --getsize64 {block_device}')
-    if code != 0:
-        raise ValueError('Failed to probe device size')
-
-    return int(stdout)
-
-
 def _block_device(db_controller, rpc_client, snode, block_device):
     bdev = rpc_client.bdev_get_bdevs(
             rpc_client.create_aio(block_device, 'aio_' + Path(block_device).name)
