@@ -239,7 +239,7 @@ def get_next_physical_device_order():
 
 
 def _block_device(db_controller, rpc_client, snode, block_device):
-    bdev = rpc_client.bdev_get_bdevs(
+    bdev = rpc_client.get_bdevs(
             rpc_client.create_aio(block_device, 'aio_' + Path(block_device).name)
     )
 
