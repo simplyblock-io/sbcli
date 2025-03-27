@@ -241,7 +241,7 @@ def get_next_physical_device_order():
 
 def _block_device(db_controller, rpc_client, snode, block_device):
     bdev = utils.ensure_one(rpc_client.get_bdevs(
-            rpc_client.create_aio('aio_' + Path(block_device).name, block_device)
+            rpc_client.bdev_aio_create('aio_' + Path(block_device).name, block_device)
     ))
 
     device = NVMeDevice({
