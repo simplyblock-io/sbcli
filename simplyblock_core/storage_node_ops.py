@@ -239,7 +239,7 @@ def get_next_physical_device_order():
     return 0
 
 
-def _block_device(db_controller, rpc_client, snode, block_device):
+def _storage_block_device(db_controller, rpc_client, snode, block_device):
     bdev = utils.ensure_one(rpc_client.get_bdevs(
             rpc_client.bdev_aio_create('aio_' + Path(block_device).name, block_device)
     ))
@@ -257,6 +257,23 @@ def _block_device(db_controller, rpc_client, snode, block_device):
     _create_storage_device_stack(rpc_client, device, snode, after_restart=False)
     device_events.device_create(device)
     return device
+
+
+def _journal_block_device(db_controller, rpc_client, snode, block_device):
+    bdev = utils.ensure_one(rpc_client.get_bdevs(
+            rpc_client.bdev_aio_create('aio_' + Path(block_device).name, block_device)
+    ))
+
+    return _create_jm_stack_on_device(rpc_client, NVMeDevice({
+            'uuid': str(uuid.uuid4()),
+            'device_name': bdev['name'],
+            'size': bdev['num_blocks'] * bdev['block_size'],
+            'nvme_bdev': bdev['name'],
+            'node_id': snode.get_id(),
+            'cluster_id': snode.cluster_id,
+            'cluster_device_order': get_next_cluster_device_order(db_controller, snode.cluster_id),
+            'status': NVMeDevice.STATUS_ONLINE
+    }), snode, after_restart=False)
 
 
 def _search_for_partitions(rpc_client, nvme_device):
@@ -1356,10 +1373,10 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
             return False
 
         snode.nvme_devices = [
-            _block_device(db_controller, rpc_client, snode, block_device)
+            _storage_block_device(db_controller, rpc_client, snode, block_device)
             for block_device in storage_block_devices
         ]
-        snode.jm_device = _create_jm_stack_on_device(rpc_client, journal_block_device, snode, after_restart=False)
+        snode.jm_device = _journal_block_device(db_controller, rpc_client, snode, journal_block_device)
 
     logger.info("Connecting to remote devices")
     remote_devices = _connect_to_remote_devs(snode)
