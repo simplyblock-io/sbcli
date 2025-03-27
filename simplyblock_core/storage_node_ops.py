@@ -1350,7 +1350,7 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
                     logger.error("Failed to prepare cluster devices")
                     return False
     else:
-        if snode.num_partitions_per_dev != 0 or snode.jm_percent != 0
+        if snode.num_partitions_per_dev != 0 or snode.jm_percent != 0:
             logger.error("Block devices only allowed with dedicated journal device")
             return False
 
