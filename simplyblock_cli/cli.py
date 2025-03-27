@@ -88,6 +88,8 @@ class CLIWrapper(CLIWrapperBase):
         subcommand.add_argument('cluster_id', help='Cluster id', type=str)
         subcommand.add_argument('node_ip', help='IP of storage node to add', type=str)
         subcommand.add_argument('ifname', help='Management interface name', type=str)
+        subcommand.add_argument('storage_block_devices', help='Block devices to use for storage. Used in conjunction with --journal_block_device.', type=str, nargs='+')
+        subcommand.add_argument('journal_block_devices', help='Block device to use for the journal. Used in conjunction with --storage_block_devices.', type=str)
         argument = subcommand.add_argument('--journal-partition', help='1: auto-create small partitions for journal on nvme devices. 0: use a separate (the smallest) nvme device of the node for journal. The journal needs a maximum of 3 percent of total available raw disk space.', type=int, default=1, dest='partitions', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--jm-percent', help='Number in percent to use for JM from each device', type=int, default=3, dest='jm_percent', required=False)
