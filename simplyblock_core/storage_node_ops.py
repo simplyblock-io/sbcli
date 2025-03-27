@@ -247,7 +247,7 @@ def _block_device(db_controller, rpc_client, snode, block_device):
     device = NVMeDevice({
             'uuid': str(uuid.uuid4()),
             'device_name': bdev['name'],
-            'size': bdev_details['num_blocks'] * bdev_details['block_size'],
+            'size': bdev['num_blocks'] * bdev['block_size'],
             'nvme_bdev': bdev['name'],
             'node_id': snode.get_id(),
             'cluster_id': snode.cluster_id,
