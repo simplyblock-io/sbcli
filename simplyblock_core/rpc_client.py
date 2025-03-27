@@ -693,12 +693,11 @@ class RPCClient:
     def bdev_aio_create(self, name, device):
         response, error =  self._request2("bdev_aio_create", {
             "name": name,
-            "device": filename,
-            "blocksize": 4096,
+            "filename": device,
         })
 
         if error:
-            raise ValueError("Failed to create AIO device: {error}")
+            raise ValueError(f"Failed to create AIO device: {error}")
 
         return response
 
