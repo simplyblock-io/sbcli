@@ -44,19 +44,12 @@ class NVMeDevice(BaseModel):
     nvmf_ip: str = ""
     nvmf_nqn: str = ""
     nvmf_port: int = 0
-    overload_percentage: int = 0
-    partition_jm_bdev: str = ""
-    partition_jm_size: int = 0
-    partition_main_bdev: str = ""
-    partition_main_size: int = 0
-    partitions_count: int = 0
     pcie_address: str = ""
     physical_label: int = 0
     pt_bdev: str = ""
     qos_bdev: str = ""
     remote_bdev: str = ""
     retries_exhausted: bool = False
-    sequential_number: int = 0
     serial_number: str = ""
     size: int = -1
     testing_bdev: str = ""
@@ -68,4 +61,3 @@ class JMDevice(NVMeDevice):
     jm_bdev: str = ""
     jm_nvme_bdev_list: List[str] = []
     raid_bdev: str = ""
-

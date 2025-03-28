@@ -66,7 +66,6 @@ class StorageNode(BaseNodeObject):
     number_of_distribs: int = 4
     nvme_devices: List[NVMeDevice] = []
     online_since: str = ""
-    partitions_count: int = 0
     poller_cpu_cores: List[int] = []
     pollers_mask: str = ""
     primary_ip: str = ""
@@ -77,7 +76,6 @@ class StorageNode(BaseNodeObject):
     rpc_port: int = -1
     rpc_username: str = ""
     secondary_node_id: str = ""
-    sequential_number: int = 0
     services: List[str] = []
     spdk_cpu_mask: str = ""
     spdk_debug: bool = False
