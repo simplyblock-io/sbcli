@@ -51,7 +51,6 @@ class NVMeDevice(BaseModel):
     partition_main_size: int = 0
     partitions_count: int = 0
     pcie_address: str = ""
-    physical_label: int = 0
     pt_bdev: str = ""
     qos_bdev: str = ""
     remote_bdev: str = ""

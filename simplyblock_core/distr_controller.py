@@ -128,7 +128,6 @@ def get_distr_cluster_map(snodes, target_node, distr_name=""):
                 "UUID": dev.get_id(),
                 "bdev_name": name,
                 "status": dev_status,
-                # "physical_label": dev.physical_label
             }
             if dev.status in [NVMeDevice.STATUS_FAILED, NVMeDevice.STATUS_FAILED_AND_MIGRATED]:
                 dev_w_map[dev.cluster_device_order] = {"weight": dev_w, "id": -1}
@@ -284,14 +283,12 @@ def send_cluster_map_add_node(snode, target_node):
 	"UUID_node" : "2373f2e5-609d-471c-8756-ba71c4e45069",
         "devices": {
             "4": {
-                "physical_label": "1",
                 "UUID": "67eadedc-94e6-4a47-a74a-10dbe847f3f9",
                 "bdev_name": "alloc0004",
                 "status": "online",
                 "weight": 1000
             },
             "5": {
-                "physical_label": "3",
                 "UUID": "6c304117-66b3-4508-b9fc-84d2dbd482ff",
                 "bdev_name": "alloc0005",
                 "status": "online",
