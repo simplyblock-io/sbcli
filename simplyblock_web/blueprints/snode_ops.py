@@ -13,6 +13,7 @@ from docker.types import LogConfig
 from flask import Blueprint
 from flask import request
 
+from simplyblock_core.utils import convert_size
 from simplyblock_web import utils, node_utils
 
 from simplyblock_core import scripts, constants, shell_utils
@@ -128,10 +129,6 @@ def spdk_process_start():
     if 'spdk_cpu_mask' in data:
         spdk_cpu_mask = data['spdk_cpu_mask']
 
-    spdk_mem = None
-    if 'spdk_mem' in data:
-        spdk_mem = data['spdk_mem']
-
     multi_threading_enabled = False
     if 'multi_threading_enabled' in data:
         multi_threading_enabled = bool(data['multi_threading_enabled'])
@@ -143,10 +140,8 @@ def spdk_process_start():
         except:
             pass
 
-    if spdk_mem:
-        spdk_mem = int(utils.parse_size(spdk_mem) / (constants.ONE_KB * constants.ONE_KB))
-    else:
-        spdk_mem = 4000
+    spdk_mem_mb = (convert_size(utils.parse_size(data['spdk_mem']), 'MB')
+            if 'spdk_mem' in data else 4000)
 
     node_docker = get_docker_client()
     nodes = node_docker.containers.list(all=True)
@@ -174,7 +169,7 @@ def spdk_process_start():
 
     container = node_docker.containers.run(
         spdk_image,
-        f"/root/scripts/run_distr.sh {spdk_cpu_mask} {spdk_mem} {spdk_debug}",
+        f"/root/scripts/run_distr.sh {spdk_cpu_mask} {spdk_mem_mb} {spdk_debug}",
         name="spdk",
         detach=True,
         privileged=True,
