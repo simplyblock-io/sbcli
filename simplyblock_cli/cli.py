@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 
-from simplyblock_cli.clibase import CLIWrapperBase
+from simplyblock_cli.clibase import CLIWrapperBase, range_type, regex_type, size_type
 from simplyblock_core import utils
 import logging
 import sys
@@ -79,7 +79,7 @@ class CLIWrapper(CLIWrapperBase):
     def init_storage_node__deploy(self, subparser):
         subcommand = self.add_sub_command(subparser, 'deploy', 'Prepares a host to be used as a storage node')
         argument = subcommand.add_argument('--ifname', help='Management interface name, e.g. eth0', type=str, dest='ifname', required=False)
-        argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=str, dest='spdk_cpu_mask', required=False)
+        argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=regex_type(r'^(0x|0X)?[a-fA-F0-9]+$'), required=False)
         argument = subcommand.add_argument('--isolate-cores', help='Isolate cores in kernel args for provided cpu mask', default=False, dest='isolate_cores', required=False, action='store_true')
 
     def init_storage_node__deploy_cleaner(self, subparser):
@@ -94,8 +94,8 @@ class CLIWrapper(CLIWrapperBase):
         if self.developer_mode:
             argument = subcommand.add_argument('--jm-percent', help='Number in percent to use for JM from each device', type=int, default=3, dest='jm_percent', required=False)
         argument = subcommand.add_argument('--data-nics', help='Storage network interface name(s). Can be more than one.', type=str, dest='data_nics', required=False, nargs='+')
-        argument = subcommand.add_argument('--max-lvol', help='Max logical volume per storage node', type=int, dest='max_lvol', required=False)
-        argument = subcommand.add_argument('--max-size', help='Maximum amount of GB to be utilized on this storage node', type=str, dest='max_prov', required=False)
+        argument = subcommand.add_argument('--max-lvol', help='Max logical volume per storage node', type=int, dest='max_lvol', required=True)
+        argument = subcommand.add_argument('--max-size', help='Maximum amount of GB to be utilized on this storage node', type=str, dest='max_prov', required=True)
         if self.developer_mode:
             argument = subcommand.add_argument('--number-of-distribs', help='The number of distirbs to be created on the node', type=int, default=4, dest='number_of_distribs', required=False)
         argument = subcommand.add_argument('--number-of-devices', help='Number of devices per storage node if it\'s not supported EC2 instance', type=int, dest='number_of_devices', required=False)
@@ -103,7 +103,7 @@ class CLIWrapper(CLIWrapperBase):
             argument = subcommand.add_argument('--size-of-device', help='Size of device per storage node', type=str, dest='partition_size', required=False)
         argument = subcommand.add_argument('--vcpu-count', help='Number of vCPUs used for SPDK. Remaining CPUs will be used for Linux system, TCP/IP processing, and other workloads. The default on non-Kubernetes hosts is 80%%.', type=int, dest='vcpu_count', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=str, dest='spdk_cpu_mask', required=False)
+            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=regex_type(r'^(0x|0X)?[a-fA-F0-9]+$'), dest='spdk_cpu_mask', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--spdk-image', help='SPDK image uri', type=str, dest='spdk_image', required=False)
         if self.developer_mode:
@@ -349,7 +349,7 @@ class CLIWrapper(CLIWrapperBase):
             argument = subcommand.add_argument('--distr-bs', help='(Dev) distrb bdev block size, default: 4096', type=int, default=4096, dest='distr_bs', required=False)
         argument = subcommand.add_argument('--chunk-size-in-bytes', help='(Dev) distrb bdev chunk block size, default: 4096', type=int, default=4096, dest='distr_chunk_bs', required=False)
         argument = subcommand.add_argument('--enable-node-affinity', help='Enable node affinity for storage nodes', dest='enable_node_affinity', required=False, action='store_true')
-        argument = subcommand.add_argument('--qpair-count', help='NVMe/TCP transport qpair count per logical volume', type=int, default=3, dest='qpair_count', required=False, choices=range(1, 128))
+        argument = subcommand.add_argument('--qpair-count', help='NVMe/TCP transport qpair count per logical volume', type=range_type(1, 128), default=3, dest='qpair_count', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--max-queue-size', help='The max size the queue will grow', type=int, default=128, dest='max_queue_size', required=False)
         if self.developer_mode:
@@ -370,7 +370,7 @@ class CLIWrapper(CLIWrapperBase):
             argument = subcommand.add_argument('--size-of-device', help='Size of device per storage node', type=str, dest='partition_size', required=False)
         argument = subcommand.add_argument('--vcpu-count', help='Number of vCPUs used for SPDK. Remaining CPUs will be used for Linux system, TCP/IP processing, and other workloads. The default on non-Kubernetes hosts is 80%%.', type=int, dest='vcpu_count', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=str, dest='spdk_cpu_mask', required=False)
+            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=regex_type(r'^(0x|0X)?[a-fA-F0-9]+$'), dest='spdk_cpu_mask', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--spdk-image', help='SPDK image uri', type=str, dest='spdk_image', required=False)
         if self.developer_mode:
@@ -389,15 +389,15 @@ class CLIWrapper(CLIWrapperBase):
         if self.developer_mode:
             argument = subcommand.add_argument('--lvol-name', help='Logical volume name or id', type=str, default='lvol01', dest='lvol_name', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--lvol-size', help='Logical volume size: 10M, 10G, 10(bytes)', type=str, default='10G', dest='lvol_size', required=False)
+            argument = subcommand.add_argument('--lvol-size', help='Logical volume size: 10M, 10G, 10(bytes)', type=size_type(), default='10G', dest='lvol_size', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--pool-name', help='Pool id or name', type=str, default='pool01', dest='pool_name', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--pool-max', help='Pool maximum size: 20M, 20G, 0(default)', type=str, default='25G', dest='pool_max', required=False)
+            argument = subcommand.add_argument('--pool-max', help='Pool maximum size: 20M, 20G, 0(default)', type=size_type(), default='25G', dest='pool_max', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--snapshot', '-s', help='Make logical volume with snapshot capability, default: false', dest='snapshot', required=False, action='store_true')
         if self.developer_mode:
-            argument = subcommand.add_argument('--max-volume-size', help='Logical volume max size', type=str, default='1000G', dest='max_size', required=False)
+            argument = subcommand.add_argument('--max-volume-size', help='Logical volume max size', type=size_type(), default='1000G', dest='max_size', required=False)
         argument = subcommand.add_argument('--host-id', help='Primary storage node id or hostname', type=str, dest='host_id', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--encrypt', help='Use inline data encryption and decryption on the logical volume', dest='encrypt', required=False, action='store_true')
@@ -444,7 +444,7 @@ class CLIWrapper(CLIWrapperBase):
             argument = subcommand.add_argument('--distr-chunk-bs', help='(Dev) distrb bdev chunk block size, default: 4096', type=int, default=4096, dest='distr_chunk_bs', required=False)
         argument = subcommand.add_argument('--ha-type', help='Logical volume HA type (single, ha), default is cluster ha type', type=str, default='ha', dest='ha_type', required=False, choices=['single','ha',])
         argument = subcommand.add_argument('--enable-node-affinity', help='Enable node affinity for storage nodes', dest='enable_node_affinity', required=False, action='store_true')
-        argument = subcommand.add_argument('--qpair-count', help='NVMe/TCP transport qpair count per logical volume', type=int, default=0, dest='qpair_count', required=False, choices=range(0, 128))
+        argument = subcommand.add_argument('--qpair-count', help='NVMe/TCP transport qpair count per logical volume', type=range_type(0, 128), default=0, dest='qpair_count', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--max-queue-size', help='The max size the queue will grow', type=int, default=128, dest='max_queue_size', required=False)
         if self.developer_mode:
@@ -469,7 +469,7 @@ class CLIWrapper(CLIWrapperBase):
             argument = subcommand.add_argument('--distr-chunk-bs', help='(Dev) distrb bdev chunk block size, default: 4096', type=int, default=4096, dest='distr_chunk_bs', required=False)
         argument = subcommand.add_argument('--ha-type', help='Logical volume HA type (single, ha), default is cluster single type', type=str, default='ha', dest='ha_type', required=False, choices=['single','ha',])
         argument = subcommand.add_argument('--enable-node-affinity', help='Enables node affinity for storage nodes', dest='enable_node_affinity', required=False, action='store_true')
-        argument = subcommand.add_argument('--qpair-count', help='NVMe/TCP transport qpair count per logical volume', type=int, default=0, dest='qpair_count', required=False, choices=range(0, 128))
+        argument = subcommand.add_argument('--qpair-count', help='NVMe/TCP transport qpair count per logical volume', type=range_type(0, 128), default=0, dest='qpair_count', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--max-queue-size', help='The max size the queue will grow', type=int, default=128, dest='max_queue_size', required=False)
         if self.developer_mode:
@@ -581,10 +581,10 @@ class CLIWrapper(CLIWrapperBase):
     def init_volume__add(self, subparser):
         subcommand = self.add_sub_command(subparser, 'add', 'Adds a new logical volume')
         subcommand.add_argument('name', help='New logical volume name', type=str)
-        subcommand.add_argument('size', help='Logical volume size: 10M, 10G, 10(bytes)', type=str)
+        subcommand.add_argument('size', help='Logical volume size: 10M, 10G, 10(bytes)', type=size_type())
         subcommand.add_argument('pool', help='Pool id or name', type=str)
         argument = subcommand.add_argument('--snapshot', '-s', help='Make logical volume with snapshot capability, default: false', default=False, dest='snapshot', required=False, action='store_true')
-        argument = subcommand.add_argument('--max-size', help='Logical volume max size', type=str, default='1000T', dest='max_size', required=False)
+        argument = subcommand.add_argument('--max-size', help='Logical volume max size', type=size_type(), default='1000T', dest='max_size', required=False)
         argument = subcommand.add_argument('--host-id', help='Primary storage node id or Hostname', type=str, dest='host_id', required=False)
         argument = subcommand.add_argument('--encrypt', help='Use inline data encryption and decryption on the logical volume', dest='encrypt', required=False, action='store_true')
         argument = subcommand.add_argument('--crypto-key1', help='Hex value of key1 to be used for logical volume encryption', type=str, dest='crypto_key1', required=False)
@@ -639,7 +639,7 @@ class CLIWrapper(CLIWrapperBase):
     def init_volume__resize(self, subparser):
         subcommand = self.add_sub_command(subparser, 'resize', 'Resizes a logical volume')
         subcommand.add_argument('volume_id', help='Logical volume id', type=str)
-        subcommand.add_argument('size', help='New logical volume size size: 10M, 10G, 10(bytes)', type=str)
+        subcommand.add_argument('size', help='New logical volume size size: 10M, 10G, 10(bytes)', type=size_type())
 
     def init_volume__create_snapshot(self, subparser):
         subcommand = self.add_sub_command(subparser, 'create-snapshot', 'Creates a snapshot from a logical volume')
@@ -650,7 +650,7 @@ class CLIWrapper(CLIWrapperBase):
         subcommand = self.add_sub_command(subparser, 'clone', 'Provisions a logical volumes from an existing snapshot')
         subcommand.add_argument('snapshot_id', help='Snapshot id', type=str)
         subcommand.add_argument('clone_name', help='Clone name', type=str)
-        argument = subcommand.add_argument('--resize', help='New logical volume size: 10M, 10G, 10(bytes). Can only increase.', type=str, dest='resize', required=False)
+        argument = subcommand.add_argument('--resize', help='New logical volume size: 10M, 10G, 10(bytes). Can only increase.', type=size_type(), default='0', dest='resize', required=False)
 
     def init_volume__move(self, subparser):
         subcommand = self.add_sub_command(subparser, 'move', 'Moves a full copy of the logical volume between nodes')
@@ -675,7 +675,7 @@ class CLIWrapper(CLIWrapperBase):
 
     def init_volume__inflate(self, subparser):
         subcommand = self.add_sub_command(subparser, 'inflate', 'Inflate a logical volume')
-        subcommand.add_argument('volume_id', help='Cloned logical volume id', type=str)
+        subcommand.add_argument('volume_id', help='Logical volume id', type=str)
 
 
     def init_control_plane(self):
@@ -718,8 +718,8 @@ class CLIWrapper(CLIWrapperBase):
         subcommand = self.add_sub_command(subparser, 'add', 'Adds a new storage pool')
         subcommand.add_argument('name', help='New pool name', type=str)
         subcommand.add_argument('cluster_id', help='Cluster id', type=str)
-        argument = subcommand.add_argument('--pool-max', help='Pool maximum size: 20M, 20G, 0. Default: 0', type=str, default='0', dest='pool_max', required=False)
-        argument = subcommand.add_argument('--lvol-max', help='Logical volume maximum size: 20M, 20G, 0. Default: 0', type=str, default='0', dest='lvol_max', required=False)
+        argument = subcommand.add_argument('--pool-max', help='Pool maximum size: 20M, 20G, 0. Default: 0', type=size_type(), default='0', dest='pool_max', required=False)
+        argument = subcommand.add_argument('--lvol-max', help='Logical volume maximum size: 20M, 20G, 0. Default: 0', type=size_type(), default='0', dest='lvol_max', required=False)
         argument = subcommand.add_argument('--max-rw-iops', help='Maximum Read Write IO Per Second', type=int, dest='max_rw_iops', required=False)
         argument = subcommand.add_argument('--max-rw-mbytes', help='Maximum Read Write Megabytes Per Second', type=int, dest='max_rw_mbytes', required=False)
         argument = subcommand.add_argument('--max-r-mbytes', help='Maximum Read Megabytes Per Second', type=int, dest='max_r_mbytes', required=False)
@@ -730,8 +730,8 @@ class CLIWrapper(CLIWrapperBase):
     def init_storage_pool__set(self, subparser):
         subcommand = self.add_sub_command(subparser, 'set', 'Sets a storage pool\'s attributes')
         subcommand.add_argument('pool_id', help='Pool id', type=str)
-        argument = subcommand.add_argument('--pool-max', help='Pool maximum size: 20M, 20G', type=str, dest='pool_max', required=False)
-        argument = subcommand.add_argument('--lvol-max', help='Logical volume maximum size: 20M, 20G', type=str, dest='lvol_max', required=False)
+        argument = subcommand.add_argument('--pool-max', help='Pool maximum size: 20M, 20G', type=size_type(), dest='pool_max', required=False)
+        argument = subcommand.add_argument('--lvol-max', help='Logical volume maximum size: 20M, 20G', type=size_type(), dest='lvol_max', required=False)
         argument = subcommand.add_argument('--max-rw-iops', help='Maximum Read Write IO Per Second', type=int, dest='max_rw_iops', required=False)
         argument = subcommand.add_argument('--max-rw-mbytes', help='Maximum Read Write Megabytes Per Second', type=int, dest='max_rw_mbytes', required=False)
         argument = subcommand.add_argument('--max-r-mbytes', help='Maximum Read Megabytes Per Second', type=int, dest='max_r_mbytes', required=False)
@@ -796,7 +796,7 @@ class CLIWrapper(CLIWrapperBase):
         subcommand = self.add_sub_command(subparser, 'clone', 'Provisions a new logical volume from an existing snapshot')
         subcommand.add_argument('snapshot_id', help='Snapshot id', type=str)
         subcommand.add_argument('lvol_name', help='Logical volume name', type=str)
-        argument = subcommand.add_argument('--resize', help='New logical volume size: 10M, 10G, 10(bytes)', type=str, dest='resize', required=False)
+        argument = subcommand.add_argument('--resize', help='New logical volume size: 10M, 10G, 10(bytes). Can only increase.', type=size_type(), default='0', dest='resize', required=False)
 
 
     def init_caching_node(self):
@@ -823,9 +823,9 @@ class CLIWrapper(CLIWrapperBase):
         subcommand.add_argument('ifname', help='Management interface name', type=str)
         argument = subcommand.add_argument('--vcpu-count', help='Number of vCPUs used for SPDK. Remaining CPUs will be used for Linux system, TCP/IP processing, and other workloads. The default on non-Kubernetes hosts is 80%%.', type=int, dest='vcpu_count', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=str, dest='spdk_cpu_mask', required=False)
+            argument = subcommand.add_argument('--cpu-mask', help='SPDK app CPU mask, default is all cores found', type=regex_type(r'^(0x|0X)?[a-fA-F0-9]+$'), dest='spdk_cpu_mask', required=False)
         if self.developer_mode:
-            argument = subcommand.add_argument('--memory', help='SPDK huge memory allocation. By default it will acquire all available huge pages.', type=int, dest='spdk_mem', required=False)
+            argument = subcommand.add_argument('--memory', help='SPDK huge memory allocation. By default it will acquire all available huge pages.', type=size_type(min=utils.parse_size('1G'), max=None), dest='spdk_mem', required=False)
         if self.developer_mode:
             argument = subcommand.add_argument('--spdk-image', help='SPDK image uri', type=str, dest='spdk_image', required=False)
         argument = subcommand.add_argument('--namespace', help='k8s namespace to deploy on', type=str, dest='namespace', required=False)

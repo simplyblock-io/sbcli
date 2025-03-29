@@ -3,6 +3,7 @@ import yaml
 import sys
 import re
 
+
 def is_parameter(item):
     return item["name"].startswith("--") or item["name"].startswith("-")
 
@@ -27,6 +28,25 @@ def no_newline(text):
     return re.sub("\n", "", text)
 
 
+def argument_type(spec):
+    if isinstance(spec, dict) and ((regex := spec.get('regex')) is not None):
+        regex = escape_strings(regex)
+        return f"regex_type(r'{regex}')"
+
+    if spec == 'size':
+        return f"size_type()"
+
+    if isinstance(spec, dict) and ((size := spec.get('size')) is not None):
+        min = "utils.parse_size('{}')".format(size['min']) if 'min' in size else None
+        max = "utils.parse_size('{}')".format(size['max']) if 'max' in size else None
+        return f"size_type(min={min}, max={max})"
+
+    if isinstance(spec, dict) and ((range := spec.get('range')) is not None):
+        return f"range_type({range['min']}, {range['max']})"
+
+    return spec
+
+
 def required(item):
     if "action" in item:
         return False
@@ -39,20 +59,6 @@ def required(item):
     elif not item["name"].startswith("--"):
         return True
     return False
-
-
-def data_type_name(item):
-    if "action" in item:
-        return "marker"
-    text = item["type"]
-    if text == "str":
-        return "string"
-    elif text == "int":
-        return "integer"
-    elif text == "bool":
-        return "boolean"
-    else:
-        return "unknown"
 
 
 def escape_python_string(text):
@@ -86,6 +92,10 @@ def default_value(item):
         return value
     elif type == "bool":
         return value if isinstance(value, bool) else value.lower() == "true"
+    elif type == "size" or (isinstance(type, dict) and 'size' in type):
+        return f"'{value}'"
+    elif isinstance(type, dict) and 'range' in type:
+        return f"{value}"
     else:
         raise "unknown data type %s" % type
 
@@ -131,7 +141,7 @@ with open("%s/cli-reference.yaml" % base_path) as stream:
             for subcommand in command["subcommands"]:
                 if "arguments" in subcommand:
                     for argument in subcommand["arguments"]:
-                        argument["required"] = False if "default" not in argument else True
+                        argument["required"] = argument["required"] if 'required' in argument else ("default" in argument)
                     arguments = select_arguments(subcommand["arguments"])
                     parameters = select_parameters(subcommand["arguments"])
                     subcommand["arguments"] = arguments
@@ -141,7 +151,7 @@ with open("%s/cli-reference.yaml" % base_path) as stream:
         environment = jinja2.Environment(loader=templateLoader)
 
         environment.filters["no_newline"] = no_newline
-        environment.filters["data_type_name"] = data_type_name
+        environment.filters["argument_type"] = argument_type
         environment.filters["default_value"] = default_value
         environment.filters["required"] = required
         environment.filters["get_description"] = get_description

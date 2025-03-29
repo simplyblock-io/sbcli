@@ -165,25 +165,42 @@ properties:
                         </ul>
                       default: false
                     type:
-                      type: string
-                      description: |
-                        The parameter type of the positional argument or parameter.
-                        Valid options are:
-                        - str
-                        - bool
-                        - int
-                      x-intellij-html-description: |
-                        The parameter type of the positional argument or parameter.<br>
-                        Valid options are:<br>
-                        <ul>
-                        <li>str</li>
-                        <li>bool</li>
-                        <li>int</li>
-                        </ul>
-                      enum:
-                        - str
-                        - bool
-                        - int
+                      oneOf:
+                        - type: string
+                          enum:
+                            - int
+                            - str
+                            - bool
+                            - size
+                        - type: object
+                          additionalProperties: false
+                          properties:
+                            range:
+                              type: object
+                              required:
+                                - min
+                                - max
+                              properties:
+                                min:
+                                  type: integer
+                                max:
+                                  type: integer
+                        - type: object
+                          additionalProperties: false
+                          properties:
+                            regex:
+                              type: string
+                        - type: object
+                          additionalProperties: false
+                          minProperties: 1
+                          properties:
+                            size:
+                              type: object
+                              properties:
+                                min:
+                                  type: string
+                                max:
+                                  type: string
                     completer:
                       type: string
                       description: The completer value of the positional argument or parameter.
@@ -230,11 +247,3 @@ properties:
                           oneOf:
                             - type: string
                             - type: integer
-                    value_range:
-                        type: string
-                        description: |
-                          The value range of the positional argument or parameter.
-                          Value ranges are defined as <min_inclusive>..<max_exclusive>: 0..128
-                        x-intellij-html-description: |
-                          The value range of the positional argument or parameter.<br>
-                          Value ranges are defined as <pre><min_inclusive>..<max_exclusive></pre>: <pre>0..128</pre>
