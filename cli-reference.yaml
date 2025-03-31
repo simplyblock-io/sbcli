@@ -159,6 +159,7 @@ commands:
             type: bool
             default: false
             action: store_true
+            required: false
           - name: "--namespace"
             help: "Kubernetes namespace to deploy on"
             dest: namespace
