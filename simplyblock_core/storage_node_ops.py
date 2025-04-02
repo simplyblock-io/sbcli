@@ -82,12 +82,7 @@ def _get_if_ip_address(ifname):
     logger.error("IP not found for interface %s", ifname)
     exit(1)
 
-
-def addNvmeDevices(snode, devs):
-    rpc_client = RPCClient(
-        snode.mgmt_ip, snode.rpc_port,
-        snode.rpc_username, snode.rpc_password, timeout=60, retry=10)
-
+def addNvmeDevices(rpc_client, snode, devs):
     devices = []
     ret = rpc_client.bdev_nvme_controller_list()
     ctr_map = {}
@@ -97,7 +92,6 @@ def addNvmeDevices(snode, devs):
     except:
         pass
 
-    next_physical_label = get_next_physical_device_order()
     for pcie in devs:
 
         if pcie in ctr_map:
@@ -110,10 +104,6 @@ def addNvmeDevices(snode, devs):
             pci_st = str(pcie).replace("0", "").replace(":", "").replace(".", "")
             nvme_controller = "nvme_%s" % pci_st
             nvme_bdevs, err = rpc_client.bdev_nvme_controller_attach(nvme_controller, pcie)
-            # time.sleep(1)
-
-        if not nvme_bdevs:
-            continue
 
         for nvme_bdev in nvme_bdevs:
             rpc_client.bdev_examine(nvme_bdev)
@@ -135,7 +125,6 @@ def addNvmeDevices(snode, devs):
                     'uuid': str(uuid.uuid4()),
                     'device_name': nvme_dict['name'],
                     'size': total_size,
-                    'physical_label': next_physical_label,
                     'pcie_address': nvme_driver_data['pci_address'],
                     'model_id': model_number,
                     'serial_number': serial_number,
@@ -145,7 +134,6 @@ def addNvmeDevices(snode, devs):
                     'cluster_id': snode.cluster_id,
                     'status': NVMeDevice.STATUS_ONLINE
             }))
-        next_physical_label += 1
     return devices
 
 
@@ -220,19 +208,6 @@ def get_next_cluster_device_order(db_controller, cluster_id):
         for dev in node.nvme_devices:
             found = True
             max_order = max(max_order, dev.cluster_device_order)
-    if found:
-        return max_order + 1
-    return 0
-
-
-def get_next_physical_device_order():
-    db_controller = DBController()
-    max_order = 0
-    found = False
-    for node in db_controller.get_storage_nodes():
-        for dev in node.nvme_devices:
-            found = True
-            max_order = max(max_order, dev.physical_label)
     if found:
         return max_order + 1
     return 0
@@ -1298,7 +1273,7 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
     node_info, _ = snode_api.info()
 
     # discover devices
-    nvme_devs = addNvmeDevices(snode, node_info['spdk_pcie_list'])
+    nvme_devs = addNvmeDevices(rpc_client, snode, node_info['spdk_pcie_list'])
     if nvme_devs:
 
         if not is_secondary_node:
@@ -1806,16 +1781,8 @@ def restart_storage_node(
 
     node_info, _ = snode_api.info()
 
-    if snode.is_secondary_node:
-        pass
-        # ret = _prepare_cluster_devices_on_restart(snode)
-        # if not ret:
-        #     logger.error("Failed to prepare cluster devices")
-        #     return False
-
-    else:
-
-        nvme_devs = addNvmeDevices(snode, node_info['spdk_pcie_list'])
+    if not snode.is_secondary_node:
+        nvme_devs = addNvmeDevices(rpc_client, snode, node_info['spdk_pcie_list'])
         if not nvme_devs:
             logger.error("No NVMe devices was found!")
             return False
