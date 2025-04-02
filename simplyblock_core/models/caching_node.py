@@ -41,12 +41,10 @@ class CachingNode(BaseNodeObject):
     multipathing: bool = True
     node_lvs: str = "lvs"
     nvme_devices: List[NVMeDevice] = []
-    partitions_count: int = 0
     remote_devices: List[NVMeDevice] = []
     rpc_password: str = ""
     rpc_port: int = -1
     rpc_username: str = ""
-    sequential_number: int = 0
     services: List[str] = []
     subsystem: str = ""
     system_uuid: str = ""
