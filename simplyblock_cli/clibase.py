@@ -16,6 +16,44 @@ from simplyblock_core.controllers import caching_node_controller, health_control
 from simplyblock_core.models.pool import Pool
 
 
+def range_type(min, max):
+    def f(arg):
+        arg = int(arg)
+
+        if not (min <= arg < max):
+            raise argparse.ArgumentTypeError(f"Value '{arg}' must be in the interval [{min} {max})")
+
+        return arg
+
+    return f
+
+
+def size_type(min=None, max=None):
+    def f(arg):
+        size = utils.parse_size(arg)
+
+        if size == -1:
+            raise argparse.ArgumentTypeError(f"Invalid size '{arg}' passed")
+        elif min is not None and size < min:
+            raise argparse.ArgumentTypeError(f"Size must be larger than {utils.humanbytes(min)}")
+        elif max is not None and size > max:
+            raise argparse.ArgumentTypeError(f"Size must be smaller than {utils.humanbytes(max)}")
+
+        return size
+
+    return f
+
+
+def regex_type(regex):
+    def f(arg):
+        if (match := re.match(regex, arg)) is not None:
+            return match
+        else:
+            raise argparse.ArgumentTypeError(f"Argument '{arg}' invalid: does not match regex ({regex})")
+
+    return f
+
+
 class CLIWrapperBase:
 
     def __init__(self):
@@ -38,12 +76,7 @@ class CLIWrapperBase:
         return parent_parser.add_parser(command, description=help, help=help, usage=usage)
 
     def storage_node__deploy(self, sub_command, args):
-        spdk_cpu_mask = None
-        if args.spdk_cpu_mask:
-            if self.validate_cpu_mask(args.spdk_cpu_mask):
-                spdk_cpu_mask = args.spdk_cpu_mask
-            else:
-                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
+        spdk_cpu_mask = args.spdk_cpu_mask if 'spdk_cpu_mask' in args else None
         isolate_cores = args.isolate_cores
         return storage_ops.deploy(args.ifname, spdk_cpu_mask, isolate_cores)
 
@@ -51,12 +84,6 @@ class CLIWrapperBase:
         return storage_ops.deploy_cleaner()
 
     def storage_node__add_node(self, sub_command, args):
-        if not args.max_lvol:
-            self.parser.error(f"Mandatory argument '--max-lvol' not provided for {sub_command}")
-        if not args.max_prov:
-            self.parser.error(f"Mandatory argument '--max-prov' not provided for {sub_command}")
-        # if not args.spdk_cpu_mask:
-        #     self.parser.error(f"Mandatory argument '--cpu-mask' not provided for {sub_command}")
         cluster_id = args.cluster_id
         node_ip = args.node_ip
         ifname = args.ifname
@@ -68,13 +95,7 @@ class CLIWrapperBase:
         large_bufsize = args.large_bufsize
         num_partitions_per_dev = args.partitions
         jm_percent = args.jm_percent
-        spdk_cpu_mask = None
-        if args.spdk_cpu_mask:
-            if self.validate_cpu_mask(args.spdk_cpu_mask):
-                spdk_cpu_mask = args.spdk_cpu_mask
-            else:
-                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
-
+        spdk_cpu_mask = args.spdk_cpu_mask if 'spdk_cpu_mask' in args else None
         max_lvol = args.max_lvol
         max_snap = args.max_snap
         max_prov = utils.parse_size(args.max_prov, unit='G')
@@ -370,8 +391,8 @@ class CLIWrapperBase:
 
     def volume__add(self, sub_command, args):
         name = args.name
-        size = utils.parse_size(args.size)
-        max_size = utils.parse_size(args.max_size)
+        size = args.size
+        max_size = args.max_size
         host_id = args.host_id
         ha_type = args.ha_type
         pool = args.pool
@@ -425,7 +446,7 @@ class CLIWrapperBase:
 
     def volume__resize(self, sub_command, args):
         volume_id = args.volume_id
-        size = utils.parse_size(args.size)
+        size = args.size
         return lvol_controller.resize_lvol(volume_id, size)
 
     def volume__create_snapshot(self, sub_command, args):
@@ -435,9 +456,7 @@ class CLIWrapperBase:
         return snapshot_id if not error else error
 
     def volume__clone(self, sub_command, args):
-        new_size = 0
-        if args.resize:
-            new_size = utils.parse_size(args.resize)
+        new_size = args.resize
 
         clone_id, error = snapshot_controller.clone(args.snapshot_id, args.clone_name, new_size)
         return clone_id if not error else error
@@ -490,8 +509,8 @@ class CLIWrapperBase:
             has_secret = False
         return pool_controller.add_pool(
             args.name,
-            utils.parse_size(args.pool_max),
-            utils.parse_size(args.lvol_max),
+            args.pool_max,
+            args.lvol_max,
             args.max_rw_iops,
             args.max_rw_mbytes,
             args.max_r_mbytes,
@@ -501,12 +520,9 @@ class CLIWrapperBase:
         )
 
     def storage_pool__set(self, sub_command, args):
-        pool_max = None
-        lvol_max = None
-        if args.pool_max:
-            pool_max = utils.parse_size(args.pool_max)
-        if args.lvol_max:
-            lvol_max = utils.parse_size(args.lvol_max)
+        pool_max = args.pool_max if args.pool_max else None
+        lvol_max = args.lvol_max if args.lvol_max else None
+
         return pool_controller.set_pool(
             args.pool_id,
             pool_max,
@@ -554,9 +570,7 @@ class CLIWrapperBase:
         return snapshot_controller.delete(args.snapshot_id, args.force)
 
     def snapshot__clone(self, sub_command, args):
-        new_size = 0
-        if args.resize:
-            new_size = utils.parse_size(args.resize)
+        new_size = args.resize
 
         success, details = snapshot_controller.clone(args.snapshot_id, args.lvol_name, new_size)
         return details
@@ -572,19 +586,8 @@ class CLIWrapperBase:
         spdk_image = args.spdk_image
         namespace = args.namespace
         multipathing = args.multipathing == "on"
-
-        spdk_cpu_mask = None
-        if args.spdk_cpu_mask:
-            if self.validate_cpu_mask(args.spdk_cpu_mask):
-                spdk_cpu_mask = args.spdk_cpu_mask
-            else:
-                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
-
-        spdk_mem = None
-        if args.spdk_mem:
-            spdk_mem = utils.parse_size(args.spdk_mem)
-            if spdk_mem < utils.parse_size('1GiB'):
-                return f"SPDK memory:{args.spdk_mem} must be larger than 1GiB"
+        spdk_cpu_mask = args.spdk_cpu_mask if 'spdk_cpu_mask' in args else None
+        spdk_mem = args.spdk_mem if 'spdk_mem' in args else None
 
         return caching_node_controller.add_node(
             cluster_id, node_ip, ifname, data_nics, spdk_cpu_mask, spdk_mem, spdk_image, namespace, multipathing)
@@ -685,15 +688,7 @@ class CLIWrapperBase:
         num_partitions_per_dev = args.partitions
         partition_size = args.partition_size
         jm_percent = args.jm_percent
-        spdk_cpu_mask = None
-        if args.spdk_cpu_mask:
-            if self.validate_cpu_mask(args.spdk_cpu_mask):
-                spdk_cpu_mask = args.spdk_cpu_mask
-            else:
-                return f"Invalid cpu mask value: {args.spdk_cpu_mask}"
-
-        
-
+        spdk_cpu_mask = args.spdk_cpu_mask if 'spdk_cpu_mask' in args else None
         max_lvol = args.max_lvol
         max_snap = args.max_snap
         max_prov = utils.parse_size(args.max_prov, unit='G')
@@ -705,11 +700,11 @@ class CLIWrapperBase:
         secondary_nodes = args.secondary_nodes
         
         lvol_name = args.lvol_name
-        lvol_size = utils.parse_size(args.lvol_size)
-        max_size = utils.parse_size(args.max_size)
+        lvol_size = args.lvol_size
+        max_size = args.max_size
         lvol_ha_type = args.lvol_ha_type
         pool_name = args.pool_name
-        pool_max = utils.parse_size(args.pool_max)
+        pool_max = args.pool_max
         host_id = args.host_id
         comp = None
         crypto = args.encrypt
@@ -798,9 +793,6 @@ class CLIWrapperBase:
                 return valid[choice]
             else:
                 sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
-
-    def validate_cpu_mask(self, spdk_cpu_mask):
-        return re.match("^(0x|0X)?[a-fA-F0-9]+$", spdk_cpu_mask)
 
     def _completer_get_cluster_list(self, prefix, parsed_args, **kwargs):
         db = db_controller.DBController()
