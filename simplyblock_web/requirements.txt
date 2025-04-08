@@ -9,4 +9,5 @@ setuptools>70.0.0
 prometheus-client
 botocore
 flask-swagger-ui
+flask-openapi3
 sentry-sdk[flask]
