@@ -269,7 +269,13 @@ def connect_lvol(uuid):
     if not lvol:
         return utils.get_response_error(f"LVol not found: {uuid}", 404)
 
-    ret = lvol_controller.connect_lvol(uuid)
+    kwargs = {}
+    if (ctrl_loss_tmo := request.args.get('ctrl-loss-tmo')) is not None:
+        kwargs['ctrl_loss_tmo'] = ctrl_loss_tmo
+
+    logger.debug(f'Passed control loss timeout: {ctrl_loss_tmo}')
+
+    ret = lvol_controller.connect_lvol(uuid, **kwargs)
     return utils.get_response(ret)
 
 
