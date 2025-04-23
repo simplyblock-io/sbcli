@@ -151,8 +151,6 @@ def update_cluster_status(cluster_id):
     cluster.write_to_db()
 
     if current_cluster_status == Cluster.STATUS_DEGRADED and next_current_status == Cluster.STATUS_ACTIVE:
-    # if cluster.status not in [Cluster.STATUS_ACTIVE, Cluster.STATUS_UNREADY] and cluster_current_status == Cluster.STATUS_ACTIVE:
-        # cluster_ops.cluster_activate(cluster_id, True)
         cluster_ops.set_cluster_status(cluster_id, Cluster.STATUS_ACTIVE)
         return
     elif current_cluster_status == Cluster.STATUS_READONLY and next_current_status in [
@@ -170,12 +168,8 @@ def update_cluster_status(cluster_id):
                 can_activate = False
                 break
 
-            # if node.status not in [StorageNode.STATUS_ONLINE, StorageNode.STATUS_REMOVED]:
-            #     logger.error(f"can not activate cluster: node in not online {node.get_id()}: {node.status}")
-            #     can_activate = False
-            #     break
             if tasks_controller.get_active_node_restart_task(cluster_id, node.get_id()):
-                logger.error(f"can not activate cluster: restart tasks found")
+                logger.error("can not activate cluster: restart tasks found")
                 can_activate = False
                 break
 
@@ -223,15 +217,9 @@ def set_node_offline(node):
         # if node.jm_device.status != JMDevice.STATUS_UNAVAILABLE:
         #     device_controller.set_jm_device_state(node.jm_device.get_id(), JMDevice.STATUS_UNAVAILABLE)
 
-def set_node_down(node, dev_status):
+def set_node_down(node):
     if node.status != StorageNode.STATUS_DOWN:
         storage_node_ops.set_node_status(node.get_id(), StorageNode.STATUS_DOWN)
-        #
-        # if dev_status:
-        #     # set devices status
-        #     for dev in node.nvme_devices:
-        #         if dev.status != dev_status:
-        #             device_controller.device_set_state(dev.get_id(), dev_status)
 
 
 logger.info("Starting node monitor")
@@ -347,11 +335,8 @@ while True:
                         tasks_controller.add_node_to_auto_restart(snode)
                 elif not node_port_check:
                     if cluster.status in [Cluster.STATUS_ACTIVE, Cluster.STATUS_DEGRADED, Cluster.STATUS_READONLY]:
-                        logger.error(f"Port check failed")
-                        if down_ports:
-                            set_node_down(snode, dev_status=NVMeDevice.STATUS_UNAVAILABLE)
-                        else:
-                            set_node_down(snode, dev_status=NVMeDevice.STATUS_ONLINE)
+                        logger.error("Port check failed")
+                        set_node_down(snode)
 
                 else:
                     set_node_offline(snode)

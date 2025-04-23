@@ -4,7 +4,7 @@ import os
 import logging
 import sys
 
-from simplyblock_core import cluster_ops, constants
+from simplyblock_core import constants
 from simplyblock_core.db_controller import DBController
 
 from graypy import GELFTCPHandler

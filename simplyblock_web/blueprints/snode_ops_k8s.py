@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # encoding: utf-8
-import json
 import logging
 import math
 import os
@@ -17,7 +16,7 @@ from jinja2 import Environment, FileSystemLoader
 import yaml
 
 from simplyblock_web import utils, node_utils, node_utils_k8s
-from simplyblock_core import scripts, constants, shell_utils, utils as core_utils
+from simplyblock_core import constants, shell_utils, utils as core_utils
 from simplyblock_web.node_utils_k8s import deployment_name, namespace_id_file, pod_name
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ def set_namespace(namespace):
     if not os.path.exists(namespace_id_file):
         try:
             os.makedirs(os.path.dirname(namespace_id_file), exist_ok=True)
-        except:
+        except Exception:
             return False
     with open(namespace_id_file, "w+") as f:
         f.write(namespace)
@@ -56,7 +55,7 @@ def get_google_cloud_info():
             "ip": data["networkInterfaces"][0]["ip"],
             "public_ip": data["networkInterfaces"][0]["accessConfigs"][0]["externalIp"],
         }
-    except:
+    except Exception:
         pass
 
 
@@ -67,10 +66,7 @@ def get_equinix_cloud_info():
         public_ip = ""
         ip = ""
         for interface in data["network"]["addresses"]:
-            if interface["address_family"] == 4:
-                if interface["enabled"] and interface["public"]:
-                    public_ip = interface["address"]
-                elif interface["enabled"] and not interface["public"]:
+            if interface["address_family"] == 4 and interface["enabled"]:
                     public_ip = interface["address"]
         return {
             "id": str(data["id"]),
@@ -79,7 +75,7 @@ def get_equinix_cloud_info():
             "ip": public_ip,
             "public_ip": ip
         }
-    except:
+    except Exception:
         pass
 
 
@@ -97,13 +93,13 @@ def get_amazon_cloud_info():
             "ip": data["privateIp"],
             "public_ip":  "",
         }
-    except:
+    except Exception:
         pass
 
 
 @bp.route('/scan_devices', methods=['GET'])
 def scan_devices():
-    run_health_check = request.args.get('run_health_check', default=False, type=bool)
+    _ = request.args.get('run_health_check', default=False, type=bool)
     out = {
         "nvme_devices": node_utils._get_nvme_devices(),
         "nvme_pcie_list": node_utils._get_nvme_pcie_list(),
@@ -187,7 +183,7 @@ def make_gpt_partitions_for_nbd():
         nbd_device = data['nbd_device']
         jm_percent = data['jm_percent']
         num_partitions = data['num_partitions']
-    except:
+    except Exception:
         pass
 
     cmd_list = [
@@ -296,8 +292,6 @@ def spdk_process_start():
     spdk_mem = data.get('spdk_mem', core_utils.parse_size('64GiB'))
 
     spdk_image = constants.SIMPLY_BLOCK_SPDK_ULTRA_IMAGE
-    # if node_utils.get_host_arch() == "aarch64":
-    #     spdk_image = constants.SIMPLY_BLOCK_SPDK_CORE_IMAGE_ARM64
 
     if 'spdk_image' in data and data['spdk_image']:
         spdk_image = data['spdk_image']
@@ -337,7 +331,7 @@ def spdk_process_start():
         resp = k8s_apps_v1.create_namespaced_deployment(body=dep, namespace=namespace)
         msg = f"Deployment created: '{resp.metadata.name}' in namespace '{namespace}"
         logger.info(msg)
-    except:
+    except Exception:
         return utils.get_response(False, f"Deployment failed:\n{traceback.format_exc()}")
 
     return utils.get_response(msg)
@@ -390,7 +384,7 @@ def spdk_process_is_up():
     if _is_pod_up():
         return utils.get_response(True)
     else:
-        return utils.get_response(False, f"SPDK container is not running")
+        return utils.get_response(False, "SPDK container is not running")
 
 
 @bp.route('/get_file_content/<string:file_name>', methods=['GET'])

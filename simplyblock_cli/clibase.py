@@ -2,7 +2,6 @@
 # PYTHON_ARGCOMPLETE_OK
 
 import argparse
-import math
 import re
 import sys
 import argcomplete

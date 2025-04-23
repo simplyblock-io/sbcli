@@ -78,7 +78,6 @@ def spdk_process_start():
             '/lib/modules/:/lib/modules/',
             '/dev/hugepages:/mnt/huge',
             '/sys:/sys'],
-        # restart_policy={"Name": "on-failure", "MaximumRetryCount": 99}
     )
 
     server_ip = data['server_ip']
@@ -86,7 +85,7 @@ def spdk_process_start():
     rpc_username = data['rpc_username']
     rpc_password = data['rpc_password']
 
-    container2 = node_docker.containers.run(
+    _ = node_docker.containers.run(
         constants.SIMPLY_BLOCK_DOCKER_IMAGE,
         "python simplyblock_core/services/spdk_http_proxy_server.py",
         name="spdk_proxy",
@@ -102,7 +101,6 @@ def spdk_process_start():
             f"RPC_USERNAME={rpc_username}",
             f"RPC_PASSWORD={rpc_password}",
         ]
-        # restart_policy={"Name": "always"}
     )
     retries = 10
     while retries > 0:
@@ -154,7 +152,7 @@ def join_db():
     db_connection = data['db_connection']
 
     logger.info("Setting DB connection")
-    ret = scripts.set_db_config(db_connection)
+    _ = scripts.set_db_config(db_connection)
 
     try:
         node_docker = get_docker_client()
@@ -163,6 +161,6 @@ def join_db():
             if node.attrs["Name"] == "/spdk_proxy":
                 node_docker.containers.get(node.attrs["Id"]).restart()
                 break
-    except:
+    except Exception:
         pass
     return utils.get_response(True)

@@ -1,6 +1,6 @@
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 import time
-from simplyblock_core.services.spdk import client as spdk_client
+
 from simplyblock_core import constants, db_controller, utils
 from simplyblock_core.rpc_client import RPCClient
 

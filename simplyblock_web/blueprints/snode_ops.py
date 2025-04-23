@@ -2,7 +2,6 @@
 # encoding: utf-8
 import json
 import logging
-import math
 import os
 import time
 
@@ -37,7 +36,7 @@ def get_google_cloud_info():
             "ip": data["networkInterfaces"][0]["ip"],
             "public_ip": data["networkInterfaces"][0]["accessConfigs"][0]["externalIp"],
         }
-    except:
+    except Exception:
         pass
 
 
@@ -48,10 +47,7 @@ def get_equinix_cloud_info():
         public_ip = ""
         ip = ""
         for interface in data["network"]["addresses"]:
-            if interface["address_family"] == 4:
-                if interface["enabled"] and interface["public"]:
-                    public_ip = interface["address"]
-                elif interface["enabled"] and not interface["public"]:
+            if interface["address_family"] == 4 and interface["enabled"]:
                     public_ip = interface["address"]
         return {
             "id": str(data["id"]),
@@ -60,7 +56,7 @@ def get_equinix_cloud_info():
             "ip": public_ip,
             "public_ip": ip
         }
-    except:
+    except Exception:
         pass
 
 
@@ -78,7 +74,7 @@ def get_amazon_cloud_info():
             "ip": data["privateIp"],
             "public_ip":  "",
         }
-    except:
+    except Exception:
         pass
 
 
@@ -87,7 +83,7 @@ def get_docker_client():
         cl = docker.DockerClient(base_url='unix://var/run/docker.sock', version="auto", timeout=60 * 5)
         cl.info()
         return cl
-    except:
+    except Exception:
         ip = os.getenv("DOCKER_IP")
         if not ip:
             for ifname in node_utils.get_nics_data():
@@ -98,12 +94,12 @@ def get_docker_client():
         try:
             cl.info()
             return cl
-        except:
+        except Exception:
             pass
 
 @bp.route('/scan_devices', methods=['GET'])
 def scan_devices():
-    run_health_check = request.args.get('run_health_check', default=False, type=bool)
+    _ = request.args.get('run_health_check', default=False, type=bool)
     out = {
         "nvme_devices": node_utils._get_nvme_devices(),
         "nvme_pcie_list": node_utils._get_nvme_pcie_list(),
@@ -117,7 +113,7 @@ def scan_devices():
 def spdk_process_start():
     try:
         data = request.get_json()
-    except:
+    except Exception:
         data = {}
 
     ssd_pcie_list = "none"
@@ -157,7 +153,7 @@ def spdk_process_start():
     if 'timeout' in data:
         try:
             timeout = int(data['timeout'])
-        except:
+        except Exception:
             pass
 
     node_docker = get_docker_client()
@@ -204,11 +200,10 @@ def spdk_process_start():
             f"RPC_PORT={rpc_port}",
             f"ssd_pcie={ssd_pcie_params}",
             f"PCI_ALLOWED={ssd_pcie_list}",
-            f"TOTAL_HP={total_mem}",
+            f"TOTAL_HP={total_mem_mib}",
         ]
-        # restart_policy={"Name": "on-failure", "MaximumRetryCount": 99}
     )
-    container2 = node_docker.containers.run(
+    _ = node_docker.containers.run(
         constants.SIMPLY_BLOCK_DOCKER_IMAGE,
         "python simplyblock_core/services/spdk_http_proxy_server.py",
         name=f"spdk_proxy_{rpc_port}",
@@ -226,7 +221,6 @@ def spdk_process_start():
             f"MULTI_THREADING_ENABLED={multi_threading_enabled}",
             f"TIMEOUT={timeout}",
         ]
-        # restart_policy={"Name": "always"}
     )
     retries = 10
     while retries > 0:
@@ -399,7 +393,7 @@ def leave_swarm():
     try:
         node_docker = get_docker_client()
         node_docker.swarm.leave(force=True)
-    except:
+    except Exception:
         pass
     return utils.get_response(True)
 
@@ -416,7 +410,7 @@ def make_gpt_partitions_for_nbd():
         jm_percent = data['jm_percent']
         partition_percent = data['partition_percent']
         num_partitions = data['num_partitions']
-    except:
+    except Exception:
         pass
 
     cmd_list = [
