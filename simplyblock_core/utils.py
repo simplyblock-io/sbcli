@@ -45,7 +45,6 @@ def get_env_var(name, default=None, is_required=False):
 
 
 def get_baseboard_sn():
-    # out, _, _ = shell_utils.run_command("dmidecode -s baseboard-serial-number")
     return get_system_id()
 
 
@@ -252,7 +251,7 @@ def parse_history_param(history_string):
     results = re.search(r'^(\d+[hmd])(\d+[hmd])?$', history_string.lower())
     if not results:
         logger.error(f"Error parsing history string: {history_string}")
-        logger.info(f"History format: xxdyyh , e.g: 1d12h, 1d, 2h, 1m")
+        logger.info("History format: xxdyyh , e.g: 1d12h, 1d, 2h, 1m")
         return False
 
     history_in_seconds = 0
@@ -573,7 +572,7 @@ def decimal_to_hex_power_of_2(decimal_number):
 def get_logger(name=""):
     # first configure a root logger
     logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
-    logg = logging.getLogger(f"root")
+    logg = logging.getLogger("root")
 
     log_level = os.getenv("SIMPLYBLOCK_LOG_LEVEL")
     log_level = log_level.upper() if log_level else constants.LOG_LEVEL
@@ -722,7 +721,7 @@ def handle_task_result(task: JobSchedule, res: dict, allowed_error_codes = None)
             return True
 
         elif migration_status == "none":
-            task.function_result = f"mig retry after restart"
+            task.function_result = "mig retry after restart"
             task.retry += 1
             task.status = JobSchedule.STATUS_SUSPENDED
             del task.function_params['migration']
@@ -812,7 +811,7 @@ cmdline_add=isolcpus={core_list} nohz_full={core_list} rcu_nocbs={core_list}
         f.write(tuned_conf_content)
     content = f"isolated_cores={core_list}\n"
     try:
-        process = subprocess.run(
+        subprocess.run(
             ["sudo", "tee", realtime_variables_file_path],
             input=content.encode("utf-8"),
             stdout=subprocess.DEVNULL,  # Suppress standard output
@@ -829,7 +828,7 @@ def run_tuned():
             ["sudo", "tuned-adm", "profile", "realtime"],
             check=True
         )
-        print(f"Successfully run the tuned adm profile")
+        print("Successfully run the tuned adm profile")
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running the tuned adm profile: {e}")
 
@@ -906,7 +905,7 @@ def store_cores_config(spdk_cpu_mask):
 
     # Write the dictionary to the JSON file
     try:
-        process = subprocess.run(
+        subprocess.run(
             ["sudo", "tee", file_path],
             input=cores_config_json.encode("utf-8"),
             stdout=subprocess.DEVNULL,  # Suppress standard output
@@ -952,7 +951,7 @@ def addNvmeDevices(rpc_client, snode, devs):
     try:
         if ret:
             ctr_map = {i["ctrlrs"][0]['trid']['traddr']: i["name"] for i in ret}
-    except:
+    except Exception:
         pass
 
     next_physical_label = snode.physical_label

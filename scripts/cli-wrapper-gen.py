@@ -4,7 +4,6 @@ import sys
 import re
 
 from jsonschema import validators
-from jsonschema.exceptions import ValidationError
 
 
 def is_parameter(item):
@@ -80,22 +79,22 @@ def bool_value(value):
 
 
 def default_value(item):
-    type = item["type"]
-    if not "default" in item:
+    item_type = item["type"]
+    if "default" not in item:
         return "None"
     value = item["default"]
-    if type == "str":
+    if item_type == "str":
         return "'%s'" % value
-    elif type == "int":
+    elif item_type == "int":
         return value
-    elif type == "bool":
+    elif item_type == "bool":
         return value if isinstance(value, bool) else value.lower() == "true"
     else:
-        raise "unknown data type %s" % type
+        raise "unknown data type %s" % item_type
 
 
 def split_value_range(value):
-    return re.sub("\\.\\.", ', ', value)
+    return str.replace("\\.\\.", ', ', value)
 
 
 def arg_value(item):

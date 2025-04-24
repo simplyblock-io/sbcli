@@ -144,9 +144,9 @@ while True:
 
                     logger.debug(f"Checking subsystem: {device.nvmf_nqn}")
                     if device.nvmf_nqn in subsystem_list:
-                        logger.info(f"Checking subsystem ... ok")
+                        logger.info("Checking subsystem ... ok")
                     else:
-                        logger.info(f"Checking subsystem: ... not found")
+                        logger.info("Checking subsystem: ... not found")
                         passed = False
 
                     set_device_health_check(cluster_id, device, passed)

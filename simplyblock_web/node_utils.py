@@ -7,13 +7,7 @@ import subprocess
 import requests
 import boto3
 import re
-
 import jc
-from kubernetes.stream import stream
-from kubernetes import client, config
-
-from simplyblock_web import utils
-
 
 
 logger = logging.getLogger(__name__)
@@ -30,17 +24,17 @@ def run_command(cmd):
 
 
 def _get_spdk_pcie_list():  # return: ['0000:00:1e.0', '0000:00:1f.0']
-    out, err, _ = run_command("ls /sys/bus/pci/drivers/uio_pci_generic")
+    out, _, _ = run_command("ls /sys/bus/pci/drivers/uio_pci_generic")
     spdk_pcie_list = [line for line in out.split() if line.startswith("0000")]
     if not spdk_pcie_list:
-        out, err, _ = run_command("ls /sys/bus/pci/drivers/vfio-pci")
+        out, _, _ = run_command("ls /sys/bus/pci/drivers/vfio-pci")
         spdk_pcie_list = [line for line in out.split() if line.startswith("0000")]
     logger.debug(spdk_pcie_list)
     return spdk_pcie_list
 
 
 def _get_nvme_pcie_list():  # return: ['0000:00:1e.0', '0000:00:1f.0']
-    out, err, _ = run_command("ls /sys/bus/pci/drivers/nvme")
+    out, _, _ = run_command("ls /sys/bus/pci/drivers/nvme")
     spdk_pcie_list = [line for line in out.split() if line.startswith("0000")]
     logger.debug(spdk_pcie_list)
     return spdk_pcie_list
@@ -125,7 +119,7 @@ def _get_spdk_devices():
 
 
 def _get_mem_info():
-    out, err, rc = run_command("cat /proc/meminfo")
+    out, _, rc = run_command("cat /proc/meminfo")
 
     if rc != 0:
         raise ValueError('Failed to get memory info')
@@ -167,7 +161,7 @@ def get_memory_details():
 
 
 def get_host_arch():
-    out, err, rc = run_command("uname -m")
+    out, _, _ = run_command("uname -m")
     return out
 
 def get_region():
@@ -296,8 +290,6 @@ def firewall_port(port_id=9090, port_type="tcp", block=True, rpc_port=None):
         ])
     else:
         cmd_list.extend([
-            # f"iptables -A INPUT -p {port_type} --dport {port_id} -j ACCEPT",
-            # f"iptables -A OUTPUT -p {port_type} --dport {port_id} -j ACCEPT",
             "iptables -L -n -v",
         ])
 

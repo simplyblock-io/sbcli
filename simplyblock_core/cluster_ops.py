@@ -9,14 +9,12 @@ import shutil
 import subprocess
 import time
 import uuid
-from tracemalloc import Snapshot
-
 import docker
 import requests
 from jinja2 import Environment, FileSystemLoader
 
-from simplyblock_core import utils, scripts, constants, mgmt_node_ops, storage_node_ops, distr_controller, shell_utils
-from simplyblock_core.controllers import cluster_events, device_controller, storage_events, pool_controller, \
+from simplyblock_core import utils, scripts, constants, mgmt_node_ops, storage_node_ops, shell_utils
+from simplyblock_core.controllers import cluster_events, device_controller, pool_controller, \
     lvol_controller
 from simplyblock_core.db_controller import DBController
 from simplyblock_core.models.cluster import Cluster
@@ -24,9 +22,7 @@ from simplyblock_core.models.job_schedule import JobSchedule
 from simplyblock_core.models.lvol_model import LVol
 from simplyblock_core.models.mgmt_node import MgmtNode
 from simplyblock_core.models.pool import Pool
-from simplyblock_core.models.snapshot import SnapShot
 from simplyblock_core.models.stats import StatsObject
-from simplyblock_core.rpc_client import RPCClient
 from simplyblock_core.models.nvme_device import NVMeDevice
 from simplyblock_core.models.storage_node import StorageNode
 
@@ -171,7 +167,7 @@ def create_cluster(blk_size, page_size_in_blocks, cli_pass,
             c.swarm.leave(force=True)
             try:
                 c.volumes.get("monitoring_grafana_data").remove(force=True)
-            except:
+            except Exception:
                 pass
             time.sleep(3)
 
@@ -284,7 +280,7 @@ def create_cluster(blk_size, page_size_in_blocks, cli_pass,
         logger.error("deploying swarm stack failed")
 
     logger.info("Configuring DB...")
-    out = scripts.set_db_config_single()
+    scripts.set_db_config_single()
     logger.info("Configuring DB > Done")
 
     _set_max_result_window(DEV_IP)
@@ -515,8 +511,7 @@ def deploy_cluster(storage_nodes,test,ha_type,distr_ndcs,distr_npcs,enable_qos,i
         if not cleaned:
             return False
 
-        status=lvol_controller.delete_lvol(lvol_uuid)
-        
+        lvol_controller.delete_lvol(lvol_uuid)
         pool_controller.delete_pool(pool_id)
         return True
     else:
@@ -587,7 +582,7 @@ def cluster_activate(cl_id, force=False, force_lvstore_create=False):
     if cluster.status == Cluster.STATUS_ACTIVE:
         logger.warning("Cluster is ACTIVE")
         if not force:
-            logger.warning(f"Failed to activate cluster, Cluster is in an ACTIVE state, use --force to reactivate")
+            logger.warning("Failed to activate cluster, Cluster is in an ACTIVE state, use --force to reactivate")
             return False
 
     ols_status = cluster.status
@@ -631,7 +626,7 @@ def cluster_activate(cl_id, force=False, force_lvstore_create=False):
                 continue
             secondary_nodes = storage_node_ops.get_secondary_nodes(snode)
             if not secondary_nodes:
-                logger.error(f"Failed to activate cluster, No enough secondary nodes")
+                logger.error("Failed to activate cluster, No enough secondary nodes")
                 set_cluster_status(cl_id, ols_status)
                 return False
             snode = db_controller.get_storage_node_by_id(snode.get_id())
@@ -1185,7 +1180,7 @@ def set_secret(cluster_id, secret):
     return "Done"
 
 
-def get_logs(cluster_id, is_json=False, limit=50, **kwargs):
+def get_logs(cluster_id, is_json=False, limit=50):
     db_controller = DBController()
     cluster = db_controller.get_cluster_by_id(cluster_id)
     if not cluster:
@@ -1237,7 +1232,7 @@ def get_cluster(cl_id):
     return json.dumps(cluster.get_clean_dict(), indent=2, sort_keys=True)
 
 
-def update_cluster(cluster_id, mgmt_only=False, restart=False, spdk_image=None, mgmt_image=None, **kwargs):
+def update_cluster(cluster_id, mgmt_only=False, restart=False, spdk_image=None, mgmt_image=None):
     db_controller = DBController()
     cluster = db_controller.get_cluster_by_id(cluster_id)
     if not cluster:
@@ -1246,7 +1241,7 @@ def update_cluster(cluster_id, mgmt_only=False, restart=False, spdk_image=None, 
 
     try:
         sbcli=constants.SIMPLY_BLOCK_CLI_NAME
-        out, _, ret_code = shell_utils.run_command(f"pip install {sbcli} --upgrade")
+        _, _, ret_code = shell_utils.run_command(f"pip install {sbcli} --upgrade")
         if ret_code == 0:
             logger.info(f"{sbcli} upgraded")
     except Exception as e:
@@ -1315,7 +1310,6 @@ def cluster_grace_startup(cl_id, clear_data=False, spdk_image=None):
     if not cluster:
         logger.error(f"Cluster not found {cl_id}")
         return False
-    # logger.info(f"Unsuspending cluster: {cl_id}")
     # unsuspend_cluster(cl_id)
 
     st = db_controller.get_storage_nodes_by_cluster_id(cl_id)
@@ -1382,7 +1376,7 @@ def open_db_from_zip(fip_path):
     out = '/tmp/fdb.zip'
     try:
         os.remove(out)
-    except:
+    except Exception:
         pass
 
     buket_name = 'simplyblock-e2e-test-logs'
@@ -1406,7 +1400,7 @@ def open_db_from_zip(fip_path):
         file_name = fip_path
 
     try:
-        ret = s3.download_file(buket_name, file_name, out)
+        s3.download_file(buket_name, file_name, out)
     except Exception as e:
         logger.error(e)
 
@@ -1428,7 +1422,7 @@ def set(cl_id, attr, value):
             logger.info(f"Setting {attr} to {value}")
             setattr(cluster, attr, value)
             cluster.write_to_db()
-        except:
+        except Exception:
             pass
 
     return True

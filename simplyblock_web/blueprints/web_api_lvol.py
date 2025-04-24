@@ -53,7 +53,7 @@ def lvol_iostats(uuid, history):
     if pool.secret:
         req_secret = request.headers.get('secret', "")
         if req_secret != pool.secret:
-            return utils.get_response_error(f"Pool secret doesn't mach the value in the request header", 400)
+            return utils.get_response_error("Pool secret doesn't mach the value in the request header", 400)
 
     data = lvol_controller.get_io_stats(uuid, history, parse_sizes=False, with_sizes=True)
     ret = {
@@ -73,7 +73,7 @@ def lvol_capacity(uuid, history):
     if pool.secret:
         req_secret = request.headers.get('secret', "")
         if req_secret != pool.secret:
-            return utils.get_response_error(f"Pool secret doesn't mach the value in the request header", 400)
+            return utils.get_response_error("Pool secret doesn't mach the value in the request header", 400)
 
     data = lvol_controller.get_capacity(uuid, history, parse_sizes=False)
     out = []
@@ -139,15 +139,13 @@ def add_lvol():
         return utils.get_response(None, f"Pool not found: {pool_id_or_name}", 400)
 
     for lvol in db_controller.get_lvols():  # pass
-        if lvol.pool_uuid == pool.get_id():
-            if lvol.lvol_name == name:
+        if lvol.pool_uuid == pool.get_id() and lvol.lvol_name == name:
                 return utils.get_response(lvol.get_id())
 
     rw_iops = utils.get_int_value_or_default(cl_data, "max_rw_iops", 0)
     rw_mbytes = utils.get_int_value_or_default(cl_data, "max_rw_mbytes", 0)
     r_mbytes = utils.get_int_value_or_default(cl_data, "max_r_mbytes", 0)
     w_mbytes = utils.get_int_value_or_default(cl_data, "max_w_mbytes", 0)
-    # max_size = utils.get_int_value_or_default(cl_data, "max_size", 0)
 
     encryption = utils.get_value_or_default(cl_data, "crypto", False)
 

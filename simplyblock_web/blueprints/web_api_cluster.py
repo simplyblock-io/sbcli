@@ -7,12 +7,10 @@ import threading
 from flask import Blueprint
 from flask import request
 
-from simplyblock_core.controllers import tasks_controller, device_controller, lvol_controller
-from simplyblock_web import utils
-
+from simplyblock_core.controllers import tasks_controller, device_controller
 from simplyblock_core import db_controller, cluster_ops, storage_node_ops
+from simplyblock_web import utils
 from simplyblock_core.models.cluster import Cluster
-from simplyblock_core import utils as core_utils
 
 logger = logging.getLogger(__name__)
 

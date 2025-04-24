@@ -17,13 +17,13 @@ hostname, _, _ = node_utils.run_command("hostname -s")
 system_id = ""
 try:
     system_id, _, _ = node_utils.run_command("dmidecode -s system-uuid")
-except:
+except Exception:
     pass
 
 
 @bp.route('/scan_devices', methods=['GET'])
 def scan_devices():
-    run_health_check = request.args.get('run_health_check', default=False, type=bool)
+    request.args.get('run_health_check', default=False, type=bool)
     out = {
         "nvme_devices": node_utils._get_nvme_devices(),
         "nvme_pcie_list": node_utils._get_nvme_pcie_list(),

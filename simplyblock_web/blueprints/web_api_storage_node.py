@@ -139,7 +139,7 @@ def storage_node_shutdown(uuid):
     try:
         args = request.args
         force = bool(args.get('force', True))
-    except:
+    except Exception:
         pass
 
     threading.Thread(
@@ -209,9 +209,9 @@ def storage_node_add():
     enable_test_device = False
     param = req_data.get('enable_test_device')
     if param:
-        if type(param) == bool:
+        if type(param) is bool:
             enable_test_device = param
-        elif type(param) == str:
+        elif type(param) is str:
             enable_test_device = param == "true"
 
     spdk_image = None

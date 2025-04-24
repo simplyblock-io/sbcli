@@ -13,7 +13,6 @@ from simplyblock_core.models.job_schedule import JobSchedule
 # Import the GELF logger
 from graypy import GELFTCPHandler
 
-from simplyblock_core.models.nvme_device import NVMeDevice
 from simplyblock_core.models.storage_node import StorageNode
 from simplyblock_core.rpc_client import RPCClient
 
