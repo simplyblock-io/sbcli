@@ -422,7 +422,7 @@ class RPCClient:
     def bdev_distrib_create(self, name, vuid, ndcs, npcs, num_blocks, block_size, jm_names,
                             chunk_size, ha_comm_addrs=None, ha_inode_self=None, pba_page_size=2097152,
                             distrib_cpu_mask="", ha_is_non_leader=True, jm_vuid=0, write_protection=False,
-                             support_storage_tiering=True, secondary_stg_name="sec_minio_bdev", disaster_recovery=False, 
+                             support_storage_tiering=False, secondary_stg_name="", disaster_recovery=False, 
                              storage_tiering_id=0, secondary_io_timeout_us=1 << 30,
                              ghost_capacity=1, fifo_main_capacity=1, fifo_small_capacity=1):
         """"
