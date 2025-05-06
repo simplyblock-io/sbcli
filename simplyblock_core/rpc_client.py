@@ -426,9 +426,8 @@ class RPCClient:
     def bdev_distrib_create(self, name, vuid, ndcs, npcs, num_blocks, block_size, jm_names,
                             chunk_size, ha_comm_addrs=None, ha_inode_self=None, pba_page_size=2097152,
                             distrib_cpu_mask="", ha_is_non_leader=True, jm_vuid=0, write_protection=False,
-                            full_page_unmap=False, support_storage_tiering=True, secondary_stg_name="", disaster_recovery=False, 
-                             storage_tiering_id=0, secondary_io_timeout_us=0,
-                             ghost_capacity=0, fifo_main_capacity=0, fifo_small_capacity=0):
+                            full_page_unmap=False, secondary_stg_name="", support_storage_tiering=True, disaster_recovery=False, 
+                            storage_tiering_id=0, secondary_io_timeout_us=1 << 30, ghost_capacity=1, fifo_main_capacity=1, fifo_small_capacity=1):
         """"
             // Optional (not specified = no HA)
             // Comma-separated communication addresses, for each node, e.g. "192.168.10.1:45001,192.168.10.1:32768".
@@ -482,6 +481,21 @@ class RPCClient:
             params['fifo_small_capacity'] = fifo_small_capacity
         return self._request("bdev_distrib_create", params)
 
+    def bdev_s3_create(self, name, uuid=None, bdb_lcpu_mask=0, s3_lcpu_mask=0, s3_thread_pool_size=32):
+        params = { 'name': name, 'bdb_lcpu_mask': bdb_lcpu_mask, 's3_lcpu_mask': s3_lcpu_mask, 's3_thread_pool_size': s3_thread_pool_size }
+        if uuid:
+            params['uuid'] = uuid
+
+        return self._request("bdev_s3_create", params)
+
+    def bdev_s3_delete(self, name):
+        params = { 'name': name }
+        return self._request("bdev_s3_delete", params)
+
+    def bdev_s3_add_bucket(self, name, bucket_name):
+        params = { 'name': name, 'bucket_name': bucket_name }
+        return self._request("bdev_s3_add_bucket_name", params)
+    
     def bdev_lvol_delete_lvstore(self, name):
         params = {"lvs_name": name}
         return self._request2("bdev_lvol_delete_lvstore", params)
