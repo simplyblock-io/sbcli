@@ -9,11 +9,6 @@ import boto3
 import re
 
 import jc
-from kubernetes.stream import stream
-from kubernetes import client, config
-
-from simplyblock_web import utils
-
 
 
 logger = logging.getLogger(__name__)
