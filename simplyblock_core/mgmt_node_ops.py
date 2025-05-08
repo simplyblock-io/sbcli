@@ -47,7 +47,7 @@ def deploy_mgmt_node(cluster_ip, cluster_id, ifname, cluster_secret):
     ret = scripts.configure_docker(DEV_IP)
 
     db_connection = cluster_data['db_connection']
-    scripts.set_db_config(db_connection)
+    utils.set_db_config(db_connection)
     time.sleep(1)
     hostname = utils.get_hostname()
     db_controller = DBController()
@@ -131,9 +131,15 @@ def deploy_mgmt_node(cluster_ip, cluster_id, ifname, cluster_secret):
 
         logger.info("Configuring Double DB...")
         time.sleep(3)
-        scripts.set_db_config_double()
+        _, error = utils.run_fdbcli_command(mgmt_ip=docker_ip,command="configure FORCE double",timeout="60")
+        if error:
+            logger.error(f"FDB Error: {error}")
+        _, error = utils.run_fdbcli_command(mgmt_ip=docker_ip, command="coordinators auto",timeout="60")
+        if error:
+            logger.error(f"FDB Error: {error}")
+        else:
+            logger.info("Node joined the cluster")
 
-    logger.info("Node joined the cluster")
     return node_id
 
 

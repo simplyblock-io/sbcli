@@ -10,8 +10,8 @@ import subprocess
 import sys
 import uuid
 import time
-import psutil
-from typing import Set, Union
+r
+from typing import Union
 
 import docker
 from prettytable import PrettyTable
@@ -1017,47 +1017,55 @@ def get_random_snapshot_vuid():
         r = 1 + int(random.random() * 1000000)
     return r
 
+def set_db_config(db_connection=None):
+    try:
+        command = f"echo '{db_connection}' | sudo tee {constants.KVD_DB_FILE_PATH} > /dev/null"
+        subprocess.run(command, shell=True, check=True)
+        logger.info(f"Successfully wrote to {constants.KVD_DB_FILE_PATH}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to set DB config: {str(e)}")
+        return False
 
-def pull_docker_image_with_retry(client: docker.DockerClient, image_name, retries=3, delay=5):
+
+def run_fdbcli_command(mgmt_ip=None,command="status",timeout="100"):
     """
-    Pulls a Docker image with retries in case of failure.
-
-    Args:
-        client (docker.DockerClient): The Docker client instance.
-        image_name (str): The name of the Docker image to pull.
-        retries (int): Number of retry attempts. Defaults to 3.
-        delay (int): Delay between retries in seconds. Defaults to 5.
-
-    Returns:
-        docker.models.images.Image: The pulled Docker image.
-
-    Raises:
-        DockerException: If all retry attempts fail.
+    Run an ephemeral fdbcli container to interact with a running FoundationDB cluster.
     """
-    for attempt in range(1, retries + 1):
-        try:
-            print(f"Attempt {attempt}: Pulling image '{image_name}'...")
-            image = client.images.pull(image_name)
-            print(f"Image '{image_name}' pulled successfully.")
-            return image
-        except (APIError, DockerException, ImageNotFound) as e:
-            print(f"Error pulling image (attempt {attempt}): {e}")
-            if attempt < retries:
-                time.sleep(delay)
-            else:
-                print("All retries failed.")
-                raise
 
+    client = docker.DockerClient(base_url=f"tcp://{mgmt_ip}:2375", version="auto")
 
-def used_ports() -> set[int]:
-    return {conn.laddr.port for conn in psutil.net_connections(kind='tcp') if conn.laddr}
+    try:
+        logger.info(f"Pulling image: {constants.FDB_DOCKER_IMAGE}")
+        client.images.pull(constants.FDB_DOCKER_IMAGE)
 
+        volumes = {
+            "/etc/foundationdb": {"bind": "/etc/foundationdb", "mode": "ro"},
+        }
 
-def next_free_port(port: int) -> int:
-    """Gets the next open port starting at the given one
-    """
-    return next(
-        p for p
-        in range(port, port + 1000)
-        if p not in used_ports()
-    )
+        environment = {
+            "FDB_CLUSTER_FILE": constants.KVD_DB_FILE_PATH,
+            "FDB_NETWORKING_MODE": "host"
+        }
+
+        logger.info(f"Running fdbcli --exec '{command}'")
+        container = client.containers.run(
+            image=constants.FDB_DOCKER_IMAGE,
+            entrypoint="fdbcli",  
+            command=["--exec", command, "--timeout", timeout],
+            environment=environment,
+            volumes=volumes,
+            network="host",
+            remove=True,
+            detach=False,
+            tty=True
+        )
+
+        time.sleep(10)
+        
+        output = container.decode("utf-8") if isinstance(container, bytes) else str(container)
+        return output, None
+
+    except Exception as e:
+        logger.exception("Failed to run fdbcli container command")
+        return None, str(e)
