@@ -1363,6 +1363,7 @@ def regenerate_config(new_config, old_config):
     if len(old_config.get("nodes")) != len(new_config.get("nodes")):
         logger.error("The number of node in old config not equal to the number of node in updated config")
         return False
+    all_nics = detect_nics()
     for i in range(len(old_config.get("nodes"))):
         validate_node_config(new_config.get("nodes")[i])
         if old_config["nodes"][i]["socket"] != new_config["nodes"][i]["socket"]:
@@ -1396,6 +1397,11 @@ def regenerate_config(new_config, old_config):
             number_of_distribs = number_of_distribs_cores
         old_config["nodes"][i]["number_of_distribs"] = number_of_distribs
         old_config["nodes"][i]["ssd_pcis"] = new_config["nodes"][i]["ssd_pcis"]
+        old_config["nodes"][i]["nic_ports"] = new_config["nodes"][i]["nic_ports"]
+        for nic in old_config["nodes"][i]["nic_ports"]:
+            if nic not in all_nics:
+                logger.error(f"The nic {nic} is not a member of system nics {all_nics}")
+                return False
         number_of_alcemls = len(old_config["nodes"][i]["ssd_pcis"])
         old_config["nodes"][i]["number_of_alcemls"] = number_of_alcemls
         small_pool_count, large_pool_count = calculate_pool_count(number_of_alcemls, 2 * number_of_distribs,
@@ -1415,14 +1421,19 @@ def regenerate_config(new_config, old_config):
     huge_total = memory_details.get("huge_total")
     total_free_memory = free_memory + huge_total
     total_required_memory = 0
+    all_isolated_cores = set()
     for node in old_config["nodes"]:
         if len(node["ssd_pcis"]) == 0:
             logger.error(f"There are not enough SSD devices on numa node {node['socket']}")
             return False
         total_required_memory += node["huge_page_memory"] + node["sys_memory"]
+        node_cores_set = set(node["isolated"])
+        all_isolated_cores.update(node_cores_set)
     if total_free_memory < total_required_memory:
             logger.error(f"The Free memory {total_free_memory} is less than required memory {total_required_memory}")
             return False
+    old_config["isolated_cores"] = list(all_isolated_cores)
+    old_config["host_cpu_mask"] = generate_mask(all_isolated_cores)
     return old_config
 
 
@@ -1522,15 +1533,9 @@ def generate_configs(max_lvol, max_prov, sockets_to_use, nodes_per_socket, pci_a
 
             nvme_neg1_list = all_nvmes_neg1_per_node[node_index]
             for nvme_name in nvme_neg1_list:
-                node_info["ssd_pcis"].append({
-                    "device": nvme_name,
-                    "pci_address": nvmes[nvme_name]["pci_address"]
-                })
+                node_info["ssd_pcis"].append(nvmes[nvme_name]["pci_address"])
             for nvme_name in nvme_per_core_group[idx]:
-                node_info["ssd_pcis"].append({
-                    "device": nvme_name,
-                    "pci_address": nvmes[nvme_name]["pci_address"]
-                })
+                node_info["ssd_pcis"].append(nvmes[nvme_name]["pci_address"])
             number_of_alcemls = len(node_info["ssd_pcis"])
             node_info["number_of_alcemls"] = number_of_alcemls
             small_pool_count, large_pool_count = calculate_pool_count(number_of_alcemls, 2 * number_of_distribs,
@@ -1553,15 +1558,20 @@ def generate_configs(max_lvol, max_prov, sockets_to_use, nodes_per_socket, pci_a
     huge_total = memory_details.get("huge_total")
     total_free_memory = free_memory + huge_total
     total_required_memory = 0
+    all_isolated_cores = set()
     for node in all_nodes:
         if len(node["ssd_pcis"]) == 0:
             logger.error(f"There are not enough SSD devices on numa node {node['socket']}")
             return False, False
         total_required_memory += node["huge_page_memory"] + node["sys_memory"]
+        node_cores_set = set(node["isolated"])
+        all_isolated_cores.update(node_cores_set)
     if total_free_memory < total_required_memory:
             logger.error(f"The Free memory {total_free_memory} is less than required memory {total_required_memory}")
             return False, False
     nodes_config["nodes"] = all_nodes
+    nodes_config["isolated_cores"] = list(all_isolated_cores)
+    nodes_config["host_cpu_mask"] = generate_mask(all_isolated_cores)
     return nodes_config, system_info
 
 
@@ -1603,8 +1613,6 @@ def validate_node_config(node):
         "distrib_cpu_cores", "jc_singleton_core"
     ]
 
-    required_ssd_pci_fields = ["device", "pci_address"]
-
     # Check top-level fields
     for field in required_top_fields:
         if field not in node:
@@ -1620,10 +1628,9 @@ def validate_node_config(node):
 
     # Check ssd_pcis fields
     for ssd in node["ssd_pcis"]:
-        for field in required_ssd_pci_fields:
-            if field not in ssd:
-                logger.error(f"Missing required SSD field '{field}' in node: {node.get('socket')}")
-                return False
+        if not is_valid_pci_address(ssd):
+            logger.error(f"Missing required SSD field '{ssd}' in node: {node.get('socket')}")
+            return False
 
     if not node["isolated"]:
         logger.error(f"'isolated' list is empty in node: {node.get('socket')}")
@@ -1633,6 +1640,11 @@ def validate_node_config(node):
         logger.error(f"'l-cores' string is empty in node: {node.get('socket')}")
         return False
     return True
+
+
+def is_valid_pci_address(address):
+    pattern = r'^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$'
+    return re.fullmatch(pattern, address) is not None
 
 
 def get_system_cores():

@@ -789,7 +789,9 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
     if node_info.get("nodes_config") and node_info["nodes_config"].get("nodes"):
         nodes = node_info["nodes_config"]["nodes"]
     else:
-        logger.error("Please run sbcli sn configure before adding the storage node")
+        logger.error("Please run sbcli sn configure before adding the storage node, "
+                     "If you run it and the config has been manually changed please "
+                     "run 'sbcli sn configure-upgrade'")
         return False
     snode_api.set_hugepages()
     for node_config in nodes:
@@ -901,9 +903,7 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
         if not satisfied:
             logger.warning(
                 f"Not enough memory for the provided max_lvo: {max_lvol}, max_prov: {max_prov}..")
-        ssd_pcie = []
-        for ssd in node_config.get("ssd_pcis"):
-            ssd_pcie.append(ssd["pci_address"])
+        ssd_pcie = node_config.get("ssd_pcis")
 
         if ssd_pcie:
             for ssd in ssd_pcie:
@@ -960,7 +960,7 @@ def add_node(cluster_id, node_ip, iface_name, data_nics_list,
             return False
 
         data_nics = []
-        names = data_nics_list or [iface_name]
+        names = node_config.get("nic_ports") or data_nics_list or [iface_name]
         for nic in names:
             device = node_info['network_interface'][nic]
             data_nics.append(
@@ -2819,6 +2819,24 @@ def set_node_status(node_id, status, reconnect_on_online=True):
         snode.health_check = True
         snode.write_to_db(db_controller.kv_store)
 
+        sec_node = db_controller.get_storage_node_by_id(snode.secondary_node_id)
+        if sec_node:
+            if sec_node.status in [StorageNode.STATUS_ONLINE, StorageNode.STATUS_DOWN]:
+                try:
+                    sec_node.connect_to_hublvol(snode)
+                except Exception as e:
+                    logger.error("Error establishing hublvol: %s", e)
+
+
+        primary_node = db_controller.get_storage_node_by_id(snode.lvstore_stack_secondary_1)
+        if primary_node:
+            if primary_node.status in [StorageNode.STATUS_ONLINE, StorageNode.STATUS_DOWN]:
+                try:
+                    snode.connect_to_hublvol(primary_node)
+                except Exception as e:
+                    logger.error("Error establishing hublvol: %s", e)
+
+
     return True
 
 
@@ -2854,7 +2872,8 @@ def recreate_lvstore_on_sec(secondary_node):
         ### 2- create lvols nvmf subsystems
         for lvol in lvol_list:
             logger.info("creating subsystem %s", lvol.nqn)
-            secondary_rpc_client.subsystem_create(lvol.nqn, 'sbcli-cn', lvol.uuid, 1000)
+            secondary_rpc_client.subsystem_create(lvol.nqn, 'sbcli-cn', lvol.uuid, 1000,
+                                                  max_namespaces=constants.LVO_MAX_NAMESPACES_PER_SUBSYS)
 
         if primary_node.status in [StorageNode.STATUS_ONLINE, StorageNode.STATUS_RESTARTING]:
 
@@ -2941,7 +2960,8 @@ def recreate_lvstore(snode):
     ### 2- create lvols nvmf subsystems
     for lvol in lvol_list:
         logger.info("creating subsystem %s", lvol.nqn)
-        rpc_client.subsystem_create(lvol.nqn, 'sbcli-cn', lvol.uuid, 1)
+        rpc_client.subsystem_create(lvol.nqn, 'sbcli-cn', lvol.uuid, 1,
+                                    max_namespaces=constants.LVO_MAX_NAMESPACES_PER_SUBSYS)
 
     if sec_node:
 
@@ -2960,7 +2980,7 @@ def recreate_lvstore(snode):
             ### 4- set leadership to false
             sec_rpc_client.bdev_lvol_set_leader(snode.lvstore, leader=False, bs_nonleadership=True)
             sec_rpc_client.bdev_distrib_force_to_non_leader(snode.jm_vuid)
-            # time.sleep(1)
+            time.sleep(1)
 
     ### 5- examine
     ret = rpc_client.bdev_examine(snode.raid)
@@ -3047,7 +3067,7 @@ def add_lvol_thread(lvol, snode, lvol_ana_state="optimized"):
             return False, msg
 
     logger.info("Add BDev to subsystem")
-    ret = rpc_client.nvmf_subsystem_add_ns(lvol.nqn, lvol.top_bdev, lvol.uuid, lvol.guid)
+    ret = rpc_client.nvmf_subsystem_add_ns(lvol.nqn, lvol.top_bdev, lvol.uuid, lvol.guid, nsid=lvol.ns_id)
     for iface in snode.data_nics:
         if iface.ip4_address:
             logger.info("adding listener for %s on IP %s" % (lvol.nqn, iface.ip4_address))
@@ -3502,22 +3522,3 @@ def set_value(node_id, attr, value):
             pass
 
     return True
-
-
-def configure_huge_pages(node_ip):
-    snode_api = SNodeClient(node_ip)
-    node_info, _ = snode_api.info()
-    if node_info.get("nodes_config") and node_info["nodes_config"].get("nodes"):
-        nodes = node_info["nodes_config"]["nodes"]
-    else:
-        logger.error("Please run sbcli sn configure before adding the storage node")
-        return False
-
-    # Set Huge page memory
-    huge_page_memory_dict = {}
-    for node_config in nodes:
-        numa = node_config["socket"]
-        huge_page_memory_dict[numa] = huge_page_memory_dict.get(numa, 0) + node_config["huge_page_memory"]
-    for numa, huge_page_memory in huge_page_memory_dict.items():
-        num_pages = huge_page_memory // (2048 * 1024)
-        utils.set_hugepages_if_needed(numa, num_pages)
