@@ -3,7 +3,7 @@
 import json
 import os
 import time
-from typing import Annotated, List, Optional, Union
+from typing import List, Optional, Union
 
 import cpuinfo
 import docker
@@ -39,7 +39,7 @@ def get_google_cloud_info():
             "ip": data["networkInterfaces"][0]["ip"],
             "public_ip": data["networkInterfaces"][0]["accessConfigs"][0]["externalIp"],
         }
-    except:
+    except Exception:
         pass
 
 
@@ -50,10 +50,7 @@ def get_equinix_cloud_info():
         public_ip = ""
         ip = ""
         for interface in data["network"]["addresses"]:
-            if interface["address_family"] == 4:
-                if interface["enabled"] and interface["public"]:
-                    public_ip = interface["address"]
-                elif interface["enabled"] and not interface["public"]:
+            if interface["address_family"] == 4 and interface["enabled"]:
                     public_ip = interface["address"]
         return {
             "id": str(data["id"]),
@@ -62,7 +59,7 @@ def get_equinix_cloud_info():
             "ip": public_ip,
             "public_ip": ip
         }
-    except:
+    except Exception:
         pass
 
 
@@ -80,7 +77,7 @@ def get_amazon_cloud_info():
             "ip": data["privateIp"],
             "public_ip":  "",
         }
-    except:
+    except Exception:
         pass
 
 
@@ -89,7 +86,7 @@ def get_docker_client(timeout=60):
         cl = docker.DockerClient(base_url='unix://var/run/docker.sock', version="auto", timeout=timeout)
         cl.info()
         return cl
-    except:
+    except Exception:
         ip = os.getenv("DOCKER_IP")
         if not ip:
             for ifname in core_utils.get_nics_data():
@@ -100,7 +97,7 @@ def get_docker_client(timeout=60):
         try:
             cl.info()
             return cl
-        except:
+        except Exception:
             pass
 
 
@@ -189,9 +186,8 @@ def spdk_process_start(body: SPDKParams):
             f"PCI_ALLOWED={ssd_pcie_list}",
             f"TOTAL_HP={total_mem_mib}",
         ]
-        # restart_policy={"Name": "on-failure", "MaximumRetryCount": 99}
     )
-    container2 = node_docker.containers.run(
+    _ = node_docker.containers.run(
         constants.SIMPLY_BLOCK_DOCKER_IMAGE,
         "python simplyblock_core/services/spdk_http_proxy_server.py",
         name=f"spdk_proxy_{body.rpc_port}",
@@ -209,7 +205,6 @@ def spdk_process_start(body: SPDKParams):
             f"MULTI_THREADING_ENABLED={body.multi_threading_enabled}",
             f"TIMEOUT={body.timeout}",
         ]
-        # restart_policy={"Name": "always"}
     )
     retries = 10
     while retries > 0:
@@ -435,7 +430,7 @@ def leave_swarm():
     try:
         node_docker = get_docker_client()
         node_docker.swarm.leave(force=True)
-    except:
+    except Exception:
         pass
     return utils.get_response(True)
 
