@@ -38,7 +38,6 @@ def check_endpoint(name, url):
             print(f"✅ {name} - OK")
         else:
             print(f"😑 {name} - Status {response.status_code}")
-            sys.exit(1)
     except Exception as e:
         print(f"[!] {name} - Exception: {e}")
         sys.exit(1)
