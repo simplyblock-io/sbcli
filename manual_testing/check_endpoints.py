@@ -52,6 +52,6 @@ if __name__ == "__main__":
     # check_endpoint("Cluster Tasks", f"{BASE_URL}/cluster/get-tasks/{CLUSTER_UUID}")
     check_endpoint("Cluster Capacity", f"{BASE_URL}/cluster/capacity/{CLUSTER_UUID}")
     check_endpoint("Capacity History (1d)", f"{BASE_URL}/cluster/capacity/{CLUSTER_UUID}/history/1d")
-    # check_endpoint("IOStats History (1d)", f"{BASE_URL}/cluster/iostats/{CLUSTER_UUID}/history/1d")
+    check_endpoint("IOStats History (1d)", f"{BASE_URL}/cluster/iostats/{CLUSTER_UUID}/history/1d")
 
     print("✅ All cluster endpoint checks passed!")
