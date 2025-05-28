@@ -142,8 +142,9 @@ def _set_max_result_window(cluster_ip, max_window=100000):
 
 def create_cluster(blk_size, page_size_in_blocks, cli_pass,
                    cap_warn, cap_crit, prov_cap_warn, prov_cap_crit, ifname, log_del_interval, metrics_retention_period,
-                   contact_point, grafana_endpoint, distr_ndcs, distr_npcs, distr_bs, distr_chunk_bs, ha_type,
-                   enable_node_affinity, qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity):
+                   contact_point, gr_endpoint, distr_ndcs, distr_npcs, distr_bs, distr_chunk_bs, ha_type,
+                   enable_node_affinity, qpair_count, max_queue_size, inflight_io_threshold, enable_qos,
+                   strict_node_anti_affinity, admin_secret=None):
 
     logger.info("Installing dependencies...")
     ret = scripts.install_deps()
@@ -192,7 +193,10 @@ def create_cluster(blk_size, page_size_in_blocks, cli_pass,
     c.nqn = f"{constants.CLUSTER_NQN}:{c.uuid}"
     c.cli_pass = cli_pass
     c.secret = utils.generate_string(20)
-    c.grafana_secret = c.secret
+    if admin_secret:
+        adm_secret = admin_secret
+    else:
+        adm_secret = utils.generate_string(20)
     c.db_connection = db_connection
     if cap_warn and cap_warn > 0:
         c.cap_warn = cap_warn
@@ -211,10 +215,10 @@ def create_cluster(blk_size, page_size_in_blocks, cli_pass,
     c.distr_bs = distr_bs
     c.distr_chunk_bs = distr_chunk_bs
     c.ha_type = ha_type
-    if grafana_endpoint:
-        c.grafana_endpoint = grafana_endpoint
+    if gr_endpoint:
+        grafana_endpoint = gr_endpoint
     else:
-        c.grafana_endpoint = f"http://{DEV_IP}/grafana"
+        grafana_endpoint = f"http://{DEV_IP}/grafana"
     c.enable_node_affinity = enable_node_affinity
     c.qpair_count = qpair_count or constants.QPAIR_COUNT
 
@@ -242,7 +246,7 @@ def create_cluster(blk_size, page_size_in_blocks, cli_pass,
 
     values = {
         'CONTACT_POINT': contact_point,
-        'GRAFANA_ENDPOINT': c.grafana_endpoint,
+        'GRAFANA_ENDPOINT': grafana_endpoint,
         'ALERT_TYPE': ALERT_TYPE,
     }
 
@@ -286,8 +290,8 @@ def create_cluster(blk_size, page_size_in_blocks, cli_pass,
 
     logger.info("Deploying swarm stack ...")
     log_level = "DEBUG" if constants.LOG_WEB_DEBUG else "INFO"
-    ret = scripts.deploy_stack(cli_pass, DEV_IP, constants.SIMPLY_BLOCK_DOCKER_IMAGE, c.secret, c.uuid,
-                               log_del_interval, metrics_retention_period, log_level, c.grafana_endpoint)
+    ret = scripts.deploy_stack(cli_pass, DEV_IP, constants.SIMPLY_BLOCK_DOCKER_IMAGE, adm_secret, c.uuid,
+                               log_del_interval, metrics_retention_period, log_level, grafana_endpoint)
     logger.info("Deploying swarm stack > Done")
 
     if ret == 0:
@@ -303,7 +307,7 @@ def create_cluster(blk_size, page_size_in_blocks, cli_pass,
 
     _add_graylog_input(DEV_IP, c.secret)
 
-    _create_update_user(c.uuid, c.grafana_endpoint, c.grafana_secret, c.secret)
+    _create_update_user(c.uuid, grafana_endpoint, adm_secret, c.secret)
 
     c.status = Cluster.STATUS_UNREADY
     c.create_dt = str(datetime.datetime.now())
@@ -312,7 +316,7 @@ def create_cluster(blk_size, page_size_in_blocks, cli_pass,
 
     cluster_events.cluster_create(c)
 
-    mgmt_node_ops.add_mgmt_node(DEV_IP, c.uuid)
+    mgmt_node_ops.add_mgmt_node(DEV_IP, c.uuid, adm_secret, grafana_endpoint)
 
     logger.info("New Cluster has been created")
     logger.info(c.uuid)
@@ -525,10 +529,10 @@ def add_cluster(blk_size, page_size_in_blocks, cap_warn, cap_crit, prov_cap_warn
                 distr_ndcs, distr_npcs, distr_bs, distr_chunk_bs, ha_type, enable_node_affinity, qpair_count,
                 max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity):
     db_controller = DBController()
-    clusters = db_controller.get_clusters()
-    if not clusters:
-        logger.error("No previous clusters found!")
-        return False
+    # clusters = db_controller.get_clusters()
+    # if not clusters:
+    #     logger.error("No previous clusters found!")
+    #     return False
 
     logger.info("Adding new cluster")
     cluster = Cluster()
@@ -539,12 +543,16 @@ def add_cluster(blk_size, page_size_in_blocks, cap_warn, cap_crit, prov_cap_warn
     cluster.secret = utils.generate_string(20)
     cluster.strict_node_anti_affinity = strict_node_anti_affinity
 
-    default_cluster = clusters[0]
-    cluster.db_connection = default_cluster.db_connection
-    cluster.grafana_secret = default_cluster.grafana_secret
-    cluster.grafana_endpoint = default_cluster.grafana_endpoint
+    grafana_secret = ""
+    grafana_endpoint = ""
+    for node in db_controller.get_mgmt_nodes():
+        if node.secret:
+            grafana_secret = node.secret
+            grafana_endpoint = node.endpoint
+            cluster.db_connection = node.db_connection
+            break
 
-    _create_update_user(cluster.uuid, cluster.grafana_endpoint, cluster.grafana_secret, cluster.secret)
+    _create_update_user(cluster.uuid, grafana_endpoint, grafana_secret, cluster.secret)
 
     if distr_ndcs == 0 and distr_npcs == 0:
         logger.error("both distr_ndcs and distr_npcs cannot be 0")
@@ -1251,8 +1259,15 @@ def set_secret(cluster_id, secret):
     secret = secret.strip()
     if len(secret) < 20:
         return "Secret must be at least 20 char"
-    
-    _create_update_user(cluster_id, cluster.grafana_endpoint, cluster.grafana_secret, secret, update_secret=True)
+
+    grafana_secret = ""
+    grafana_endpoint = ""
+    for node in db_controller.get_mgmt_nodes():
+        if node.secret:
+            grafana_secret = node.secret
+            grafana_endpoint = node.endpoint
+            break
+    _create_update_user(cluster_id, grafana_endpoint, grafana_secret, secret, update_secret=True)
     
     cluster.secret = secret
     cluster.write_to_db(db_controller.kv_store)
@@ -1442,9 +1457,9 @@ def delete_cluster(cl_id):
         logger.error("Can only remove Empty cluster, Pools found")
         return False
 
-    if len(db_controller.get_clusters()) == 1 :
-        logger.error("Can not remove the last cluster!")
-        return False
+    # if len(db_controller.get_clusters()) == 1 :
+    #     logger.error("Can not remove the last cluster!")
+    #     return False
 
     logger.info(f"Deleting Cluster {cl_id}")
     cluster_events.cluster_delete(cluster)
