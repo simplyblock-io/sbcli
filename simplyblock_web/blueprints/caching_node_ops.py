@@ -200,7 +200,7 @@ class _JoinDBParams(utils.RPCPortParams):
 @api.post('/join_db')
 def join_db(body: _JoinDBParams):
     logger.info("Setting DB connection")
-    scripts.set_db_config(db_connection)
+    scripts.set_db_config(body.db_connection)
 
     try:
         node_docker = get_docker_client()
