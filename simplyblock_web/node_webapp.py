@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from simplyblock_core import utils as core_utils
-logger = core_utils.get_logger(__name__)
-
 import argparse
 
 from flask_openapi3 import OpenAPI
 
 from simplyblock_web import utils
 from simplyblock_core import constants
+
+logger = core_utils.get_logger(__name__)
 
 
 app = OpenAPI(__name__)
@@ -37,14 +37,14 @@ if __name__ == '__main__':
 
     mode = args.mode
     if mode == "caching_docker_node":
-        from simplyblock_web.blueprints import node_api_basic, node_api_caching_docker
+        from simplyblock_web.blueprints import node_api_basic, caching_node_ops
         app.register_api(node_api_basic.api)
-        app.register_api(node_api_caching_docker.api)
+        app.register_api(caching_node_ops.api)
 
     if mode == "caching_kubernetes_node":
-        from simplyblock_web.blueprints import node_api_basic, node_api_caching_ks
+        from simplyblock_web.blueprints import node_api_basic, caching_node_ops_k8s
         app.register_api(node_api_basic.api)
-        app.register_api(node_api_caching_ks.api)
+        app.register_api(caching_node_ops_k8s.api)
 
     if mode == "storage_node":
         from simplyblock_web.blueprints import snode_ops

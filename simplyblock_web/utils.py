@@ -2,8 +2,12 @@ import base64
 import random
 import re
 import string
+from typing import Literal, Optional
 
 from flask import jsonify
+from pydantic import BaseModel, Field, model_validator
+
+from simplyblock_core import constants
 
 
 IP_PATTERN = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
@@ -99,3 +103,32 @@ def get_aws_region():
         pass
 
     return 'us-east-1'
+
+
+class RPCPortParams(BaseModel):
+    rpc_port: int = Field(constants.RPC_HTTP_PROXY_PORT, ge=0, le=65536)
+
+
+class DeviceParams(BaseModel):
+    device_pci: str
+
+
+class NVMEConnectParams(BaseModel):
+    ip: str = Field(pattern=IP_PATTERN)
+    port: int = Field(ge=0, le=65536)
+    nqn: str
+
+
+class DisconnectParams(BaseModel):
+    nqn: Optional[str]
+    device_path: Optional[str]
+    all: Optional[Literal[True]]
+
+    @model_validator(mode='after')
+    def verify_mutually_exclusive(self):
+        if sum(
+            getattr(self, attr) is not None
+            for attr in ['nqn', 'device_path', 'all']
+        ) != 1:
+            raise ValueError('Exactly one of the arguments must be set')
+        return self
