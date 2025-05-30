@@ -15,7 +15,7 @@ from jinja2 import Environment, FileSystemLoader
 import yaml
 from pydantic import BaseModel, Field
 
-from . import snode_ops
+from .docker import bind_device_to_spdk, delete_gpt_partitions_for_dev
 from simplyblock_core import constants, shell_utils, utils as core_utils
 from simplyblock_web import utils, node_utils, node_utils_k8s
 from simplyblock_web.node_utils_k8s import namespace_id_file
@@ -250,11 +250,7 @@ def make_gpt_partitions_for_nbd(body: _GPTPartitionsParams):
     return utils.get_response(True)
 
 
-class _DeviceParams(BaseModel):
-    device_pci: str
-
-
-api.post('/delete_dev_gpt_partitions')(snode_ops.delete_gpt_partitions_for_dev)
+api.post('/delete_dev_gpt_partitions')(delete_gpt_partitions_for_dev)
 
 
 CPU_INFO = cpuinfo.get_cpu_info()
@@ -551,4 +547,4 @@ def apply_config():
 
     return utils.get_response(True)
 
-api.post('/bind_device_to_spdk')(snode_ops.bind_device_to_spdk)
+api.post('/bind_device_to_spdk')(bind_device_to_spdk)
