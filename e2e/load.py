@@ -120,16 +120,20 @@ try:
         read_only=args.read_log,
         continue_from_log=args.continue_from_log
     )
+    test_obj.setup()
+    test_obj.cleanup_logs()
+    test_obj.configure_sysctl_settings()
     test_obj.run()
-    summary += f"✅ {selected_test.__name__}: PASSED\n"
+    summary += f"{selected_test.__name__}: PASSED\n"
     logger.info(f"Test {selected_test.__name__} completed successfully")
 except Exception as e:
     logger.error(traceback.format_exc())
-    summary += f"❌ {selected_test.__name__}: FAILED\n"
+    summary += f"{selected_test.__name__}: FAILED\n"
     if args.send_debug_notification or args.upload_logs:
         logger.error("Test failed. Logs and notification may still proceed.")
     raise MultipleExceptions({selected_test.__name__: [e]})
 finally:
+    test_obj.teardown()
     if check_for_dumps():
         logger.info("Found a core dump during test execution. Cluster is unstable.")
     if args.send_debug_notification:
