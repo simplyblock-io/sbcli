@@ -25,19 +25,6 @@ def list(path: ClusterPath):
     ]
 
 
-class _SnapshotParams(BaseModel):
-    lvol_id: str = Field(pattern=core_utils.UUID_PATTERN)
-    name: str
-
-
-@api.put('/')
-def add(path: ClusterPath, body: _SnapshotParams):
-    snapshot_id, err = snapshot_controller.add(body.lvol_id, body.snapshot_name)
-    if err is not None:
-        raise ValueError('Failed to create snapshot')
-    return jsonify(snapshot_id)
-
-
 instance_api = APIBlueprint('snapshot instance', __name__, url_prefix='/<snapshot_id>')
 
 
