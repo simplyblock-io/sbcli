@@ -1,4 +1,4 @@
-# coding=utf-8
+# coding=utf- 8
 import datetime
 import json
 import math
@@ -27,7 +27,7 @@ from simplyblock_core.models.nvme_device import NVMeDevice, JMDevice
 from simplyblock_core.models.storage_node import StorageNode
 from simplyblock_core.models.cluster import Cluster
 from simplyblock_core.rpc_client import RPCClient, RPCException
-from simplyblock_core.snode_client import SNodeClient
+from simplyblock_core.snode_client import SNodeClient, SNodeClientException
 from simplyblock_web import node_utils
 from simplyblock_core.utils import addNvmeDevices
 from simplyblock_core.utils import pull_docker_image_with_retry
@@ -1328,6 +1328,7 @@ def remove_storage_node(node_id, force_remove=False, force_migrate=False):
                     pci_address.append(dev.pcie_address)
     except Exception as e:
         logger.exception(e)
+        return False
 
     set_node_status(node_id, StorageNode.STATUS_REMOVED)
 
@@ -2061,9 +2062,11 @@ def shutdown_storage_node(node_id, force=False):
     #     distr_controller.disconnect_device(dev)
 
     logger.info("Stopping SPDK")
-    if health_controller._check_node_api(snode.mgmt_ip):
-        snode_api = SNodeClient(snode.api_endpoint, timeout=30, retry=1)
-        snode_api.spdk_process_kill(snode.rpc_port)
+    try:
+        SNodeClient(snode.api_endpoint, timeout=30, retry=1).spdk_process_kill(snode.rpc_port)
+    except SNodeClientException:
+        logger.error('Failed to kill SPDK')
+        return False
 
     logger.info("Setting node status to offline")
     set_node_status(node_id, StorageNode.STATUS_OFFLINE)
@@ -2116,12 +2119,12 @@ def suspend_storage_node(node_id, force=False):
 
     if cluster.ha_type == "ha":
         if online_nodes < 3 and cluster.status == cluster.STATUS_ACTIVE:
-            logger.warning(f"Cluster mode is HA but online storage nodes are less than 3")
+            logger.warning("Cluster mode is HA but online storage nodes are less than 3")
             if force is False:
                 return False
 
         if cluster.status == cluster.STATUS_DEGRADED and force is False:
-            logger.warning(f"Cluster status is degraded, use --force but this will suspend the cluster")
+            logger.warning("Cluster status is degraded, use --force but this will suspend the cluster")
             return False
 
     logger.info("Suspending node")
@@ -2569,11 +2572,7 @@ def start_storage_node_api_container(node_ip):
     logger.info("Recreating SNodeAPI container")
 
     # create the api container
-    nodes = node_docker.containers.list(all=True)
-    for node in nodes:
-        if node.attrs["Name"] == "/SNodeAPI":
-            node.stop(timeout=1)
-            node.remove(force=True)
+    utils.remove_container(node_docker, '/SNodeAPI')
 
     container = node_docker.containers.run(
         constants.SIMPLY_BLOCK_DOCKER_IMAGE,
