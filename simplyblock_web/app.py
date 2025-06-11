@@ -2,13 +2,12 @@
 # encoding: utf-8
 
 import logging
-from flask import Flask
+from flask import redirect, request
+from flask_openapi3 import OpenAPI
 
 from simplyblock_web import utils
-from simplyblock_web.blueprints import web_api_cluster, web_api_mgmt_node, web_api_device, \
-    web_api_lvol, web_api_storage_node, web_api_pool, web_api_caching_node, \
-    web_api_snapshot, web_api_deployer, swagger_ui_blueprint, web_api_metrics
-from simplyblock_web.auth_middleware import token_required
+from simplyblock_web.api import public_api
+from simplyblock_web.api.v2.auth import api_token_required_scheme
 from simplyblock_core import constants, utils as core_utils
 
 logger = core_utils.get_logger(__name__)
@@ -17,30 +16,19 @@ logger = core_utils.get_logger(__name__)
 core_utils.init_sentry_sdk()
 
 
-app = Flask(__name__)
+app = OpenAPI(
+        __name__,
+        security_schemes={
+            'token_v2': api_token_required_scheme,
+        },
+)
 app.logger.setLevel(constants.LOG_WEB_LEVEL)
 app.url_map.strict_slashes = False
 app.register_error_handler(Exception, utils.error_handler)
 
 
 # Add routes
-app.register_blueprint(web_api_cluster.bp)
-app.register_blueprint(web_api_mgmt_node.bp)
-app.register_blueprint(web_api_device.bp)
-app.register_blueprint(web_api_lvol.bp)
-app.register_blueprint(web_api_snapshot.bp)
-app.register_blueprint(web_api_storage_node.bp)
-app.register_blueprint(web_api_pool.bp)
-app.register_blueprint(web_api_caching_node.bp)
-app.register_blueprint(web_api_deployer.bp)
-app.register_blueprint(swagger_ui_blueprint.bp, url_prefix=swagger_ui_blueprint.SWAGGER_URL)
-app.register_blueprint(web_api_metrics.bp)
-
-
-@app.before_request
-@token_required
-def before_request():
-    pass
+app.register_blueprint(public_api, url_prefix='/api')
 
 
 @app.route('/', methods=['GET'])
@@ -48,7 +36,14 @@ def status():
     return utils.get_response("Live")
 
 
-app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+# Redirect unqualified URLs to the API
+@app.before_request
+def redirect_v1():
+    if request.path.startswith('/api') or request.path.startswith('/static'):
+        return None
+    return redirect(f'/api/v1{request.path}' + ('?' + request.query_string.decode() if request.query_string else ''), code=308)
+
+
 if __name__ == '__main__':
     logging.getLogger('werkzeug').setLevel(constants.LOG_WEB_LEVEL)
     app.run(host='0.0.0.0', debug=constants.LOG_WEB_DEBUG)

@@ -22,10 +22,6 @@ api = APIBlueprint("snode", __name__, url_prefix="/snode")
 cluster_id_file = "/etc/foundationdb/sbcli_cluster_id"
 
 
-class _RPCPortQuery(BaseModel):
-    rpc_port: Optional[int] = Field(constants.RPC_HTTP_PROXY_PORT)
-
-
 def get_google_cloud_info():
     try:
         headers = {'Metadata-Flavor': 'Google'}
@@ -233,10 +229,10 @@ def spdk_process_start(body: SPDKParams):
         'type': 'boolean'
     })}}},
 })
-def spdk_process_kill(query: _RPCPortQuery):
+def spdk_process_kill(body: utils.RPCPortParams):
     node_docker = get_docker_client()
     for cont in node_docker.containers.list(all=True):
-        if cont.attrs["Name"] in [f"/spdk_{query.rpc_port}", f"/spdk_proxy_{query.rpc_port}"]:
+        if cont.attrs["Name"] in [f"/spdk_{body.rpc_port}", f"/spdk_proxy_{body.rpc_port}"]:
             cont.stop(timeout=3)
             cont.remove(force=True)
     return utils.get_response(True)
@@ -247,12 +243,12 @@ def spdk_process_kill(query: _RPCPortQuery):
         'type': 'boolean'
     })}}},
 })
-def spdk_process_is_up(query: _RPCPortQuery):
+def spdk_process_is_up(body: utils.RPCPortParams):
     try:
         node_docker = get_docker_client()
         for cont in node_docker.containers.list(all=True):
             logger.debug(f"Container: {cont.attrs['Name']} status: {cont.attrs['State']}")
-            if cont.attrs['Name'] == f"/spdk_{query.rpc_port}":
+            if cont.attrs['Name'] == f"/spdk_{body.rpc_port}":
                 status = cont.attrs['State']["Status"]
                 is_running = cont.attrs['State']["Running"]
                 if is_running:
@@ -270,11 +266,11 @@ def spdk_process_is_up(query: _RPCPortQuery):
         'type': 'boolean'
     })}}},
 })
-def spdk_proxy_restart(query: _RPCPortQuery):
+def spdk_proxy_restart(body: utils.RPCPortParams):
     try:
         node_docker = get_docker_client()
         for cont in node_docker.containers.list(all=True):
-            if cont.attrs['Name'] == f"/spdk_proxy_{query.rpc_port}":
+            if cont.attrs['Name'] == f"/spdk_proxy_{body.rpc_port}":
                 cont.restart(timeout=3)
                 return utils.get_response(True)
     except Exception as e:
@@ -485,12 +481,8 @@ def make_gpt_partitions_for_nbd(body: _GPTPartitionsParams):
     return utils.get_response(True)
 
 
-class _DeviceParams(BaseModel):
-    device_pci: str
-
-
 @api.post('/delete_dev_gpt_partitions')
-def delete_gpt_partitions_for_dev(body: _DeviceParams):
+def delete_gpt_partitions_for_dev(body: utils.DeviceParams):
     cmd_list = [
         f"echo -n \"{body.device_pci}\" > /sys/bus/pci/drivers/uio_pci_generic/unbind",
         f"echo -n \"{body.device_pci}\" > /sys/bus/pci/drivers/nvme/bind",
@@ -538,7 +530,7 @@ if not os.environ.get("WITHOUT_CLOUD_INFO"):
 
 
 @api.post('/bind_device_to_spdk')
-def bind_device_to_spdk(body: _DeviceParams):
+def bind_device_to_spdk(body: utils.DeviceParams):
     cmd_list = [
         f"echo -n \"{body.device_pci}\" > /sys/bus/pci/drivers/nvme/unbind",
         f"echo \"\" > /sys/bus/pci/devices/{body.device_pci}/driver_override",
@@ -583,8 +575,8 @@ def firewall_set_port(body: _FirewallParams):
         'type': 'string'
     })}}},
 })
-def get_firewall(query: _RPCPortQuery):
-    ret = node_utils.firewall_get(str(query.rpc_port))
+def get_firewall(body: utils.RPCPortParams):
+    ret = node_utils.firewall_get(str(body.rpc_port))
     return utils.get_response(ret)
 
 
