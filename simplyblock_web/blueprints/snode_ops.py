@@ -11,6 +11,7 @@ import requests
 from docker.types import LogConfig
 from flask_openapi3 import APIBlueprint
 from pydantic import BaseModel, Field
+from docker.errors import APIError
 
 from simplyblock_core import scripts, constants, shell_utils, utils as core_utils
 from simplyblock_web import utils, node_utils
@@ -157,10 +158,21 @@ def spdk_process_start(body: SPDKParams):
     node_docker = get_docker_client(timeout=60*3)
     nodes = node_docker.containers.list(all=True)
     for node in nodes:
-        if node.attrs["Name"] in [f"/spdk_{body.rpc_port}", f"/spdk_proxy_{body.rpc_port}"]:
-            logger.info(f"{node.attrs['Name']} container found, removing...")
-            node.stop(timeout=3)
-            node.remove(force=True)
+        try:
+            if node.attrs["Name"] in [f"/spdk_{body.rpc_port}", f"/spdk_proxy_{body.rpc_port}"]:
+                logger.info(f"{node.attrs['Name']} container found, removing...")
+                node.stop(timeout=3)
+                node.remove(force=True)
+                logger.info(f"{node.attrs['Name']} container removed successfully.")
+        except APIError as e:
+            if "removal of container" in str(e) and "is already in progress" in str(e):
+                logger.warning(f"{node.attrs['Name']} removal is already in progress, ignoring.")
+            else:
+                logger.error(f"Failed to remove {node.attrs['Name']}: {e}")
+                raise
+        except Exception as e:
+            logger.exception(f"Unexpected error while removing {node.attrs['Name']}: {e}")
+            raise
 
     if body.cluster_ip is not None:
         log_config = LogConfig(type=LogConfig.types.GELF, config={"gelf-address": f"tcp://{body.cluster_ip}:12202"})
