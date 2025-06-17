@@ -10,11 +10,16 @@ import subprocess
 import sys
 import uuid
 import time
-from typing import Union
+import psutil
+import socket
+from typing import Set, Union
 from kubernetes import client, config
 import docker
 from prettytable import PrettyTable
 from docker.errors import APIError, DockerException, ImageNotFound
+from kubernetes.stream import stream
+
+import psutil
 
 from simplyblock_core import constants
 from simplyblock_core import shell_utils
@@ -171,6 +176,25 @@ def get_docker_client(cluster_id=None):
             raise e
     return False
 
+def get_k8s_node_ip():
+    from simplyblock_core.db_controller import DBController
+    db_controller = DBController()
+    nodes = db_controller.get_mgmt_nodes()
+
+    if not nodes:
+        logger.error("No mgmt nodes was found in the cluster!")
+        return False
+
+    mgmt_ips = [node.mgmt_ip for node in nodes]
+
+    for ip in mgmt_ips:
+        try:
+            with socket.create_connection((ip, 10250), timeout=2):
+                return ip
+        except Exception as e:
+            print(e)
+            raise e
+    return False
 
 def dict_agg(data, mean=False, keys=None):
     out = {}
@@ -1748,6 +1772,64 @@ def get_k8s_apps_client():
 def get_k8s_core_client():
     config.load_incluster_config()
     return client.CoreV1Api()
+
+def initiate_mongodb_rs():
+    k8s_core_v1 = client.CoreV1Api()
+    namespace = "simplyblock"
+    container = "mongodb"
+    pod_name = "simplyblock-mongodb-0"
+
+    js_command = (
+        'rs.initiate({_id: "rs0", members: ['
+        '{_id: 0, host: "simplyblock-mongodb-0.simplyblock-mongodb:27017", priority: 2},'
+        '{_id: 1, host: "simplyblock-mongodb-1.simplyblock-mongodb:27017", priority: 1},'
+        '{_id: 2, host: "simplyblock-mongodb-2.simplyblock-mongodb:27017", priority: 1}'
+        ']})'
+    )
+
+    full_command = f'mongosh --eval \'{js_command}\''
+
+
+    exec_command = ["/bin/sh", "-c", full_command]
+
+    resp = stream(k8s_core_v1.connect_get_namespaced_pod_exec,
+                  pod_name,
+                  namespace,
+                  command=exec_command,
+                  container=container,
+                  stderr=True, stdin=False,
+                  stdout=True, tty=False,
+                  _preload_content=False)
+
+    result = ""
+    while resp.is_open():
+        resp.update(timeout=1)
+        if resp.peek_stdout():
+            result = resp.read_stdout()
+            print(f"STDOUT: \n{result}")
+        if resp.peek_stderr():
+            print(f"STDERR: \n{resp.read_stderr()}")
+
+    resp.close()
+
+    if resp.returncode != 0:
+        raise Exception(resp.readline_stderr())
+    logger.debug(f"ReplicaSet Init Output:\n{result}")
+
+def all_pods_ready(k8s_core_v1, statefulset_name, namespace, expected_replicas):
+    ready_pods = 0
+    pods = k8s_core_v1.list_namespaced_pod(
+        namespace=namespace,
+        label_selector=f"app={statefulset_name}"
+    ).items
+
+    for pod in pods:
+        statuses = pod.status.container_statuses or []
+        for status in statuses:
+            if status.name == "mongodb" and status.ready:
+                ready_pods += 1
+
+    return ready_pods == expected_replicas
 
 
 def remove_container(client: docker.DockerClient, name, timeout=3):

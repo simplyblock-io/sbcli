@@ -547,7 +547,8 @@ class CLIWrapperBase:
         cluster_ip = args.cluster_ip
         cluster_secret = args.cluster_secret
         ifname = args.ifname
-        return mgmt_ops.deploy_mgmt_node(cluster_ip, cluster_id, ifname, cluster_secret)
+        mode = args.mode
+        return mgmt_ops.deploy_mgmt_node(cluster_ip, cluster_id, ifname, cluster_secret, mode)
 
     def control_plane__list(self, sub_command, args):
         return mgmt_ops.list_mgmt_nodes(args.json)
@@ -726,6 +727,7 @@ class CLIWrapperBase:
         storage_nodes = args.storage_nodes
         test = args.test
         ha_type = args.ha_type
+        mode = args.mode
         ha_jm_count = args.ha_jm_count
         distr_ndcs = args.distr_ndcs
         distr_npcs = args.distr_npcs
@@ -779,8 +781,8 @@ class CLIWrapperBase:
         comp = None
         distr_vuid = args.distr_vuid
 
-        cluster_ops.deploy_cluster(
-            storage_nodes, test, ha_type, distr_ndcs, distr_npcs, enable_qos, ifname,
+        return cluster_ops.deploy_cluster(
+            storage_nodes, test, ha_type, mode, distr_ndcs, distr_npcs, enable_qos, ifname,
             blk_size, page_size_in_blocks, CLI_PASS, cap_warn, cap_crit, prov_cap_warn,
             prov_cap_crit, log_del_interval, metrics_retention_period, contact_point, grafana_endpoint,
             distr_bs, distr_chunk_bs, enable_node_affinity,
@@ -808,6 +810,7 @@ class CLIWrapperBase:
         distr_bs = args.distr_bs
         distr_chunk_bs = args.distr_chunk_bs
         ha_type = args.ha_type
+        mode = args.mode
         log_del_interval = args.log_del_interval
         metrics_retention_period = args.metrics_retention_period
         contact_point = args.contact_point
@@ -823,7 +826,7 @@ class CLIWrapperBase:
             blk_size, page_size_in_blocks,
             CLI_PASS, cap_warn, cap_crit, prov_cap_warn, prov_cap_crit,
             ifname, log_del_interval, metrics_retention_period, contact_point, grafana_endpoint,
-            distr_ndcs, distr_npcs, distr_bs, distr_chunk_bs, ha_type, enable_node_affinity,
+            distr_ndcs, distr_npcs, distr_bs, distr_chunk_bs, ha_type, mode, enable_node_affinity,
             qpair_count, max_queue_size, inflight_io_threshold, enable_qos, strict_node_anti_affinity)
 
     def query_yes_no(self, question, default="yes"):
