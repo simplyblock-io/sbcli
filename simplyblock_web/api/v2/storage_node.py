@@ -104,6 +104,8 @@ def delete(path: StorageNodePath):
     if none_or_false == False:  # noqa
         raise ValueError('Failed to remove storage node')
 
+    return '', 204
+
 
 @instance_api.get('/capacity')
 def capacity(path: StorageNodePath, query: util.HistoryQuery):
@@ -176,6 +178,8 @@ def suspend(path: StorageNodePath, query: _ForceDefaultTrueQuery):
     if not storage_node_ops.suspend_storage_node(storage_node.get_id(), query.force):
         raise ValueError('Failed to suspend storage node')
 
+    return '', 204
+
 
 @instance_api.post('/resume')
 def resume(path: StorageNodePath):
@@ -192,7 +196,7 @@ def shutdown(path: StorageNodePath, query: _ForceDefaultTrueQuery):
         args=(storage_node.get_id(), query.force)
     ).start()
 
-    return None, 201  # FIXME: Provide URL for checking task status
+    return None, 202  # FIXME: Provide URL for checking task status
 
 
 class _RestartQuery(BaseModel):
@@ -214,7 +218,7 @@ def restart(path: StorageNodePath, query: _RestartQuery):
         }
     ).start()
 
-    return None, 201  # FIXME: Provide URL for checking task status
+    return None, 202  # FIXME: Provide URL for checking task status
 
 
 api.register_api(instance_api)
