@@ -56,7 +56,7 @@ def test_snapshot_softdelete(call, cluster, pool):
 
     clone_uuid = call(
             'POST',
-            f'/clusters/{cluster}/pools/{pool}/snapshots/{snapshot_uuid}clone',
+            f'/clusters/{cluster}/pools/{pool}/snapshots/{snapshot_uuid}/clone',
             data={'name': 'cloneX'},
     )
 
