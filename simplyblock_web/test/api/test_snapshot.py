@@ -15,7 +15,7 @@ def test_snapshot_delete(call, cluster, pool):
     snapshot_uuid = call(
            'POST',
            f'/clusters/{cluster}/pools/{pool}/volumes/{lvol_uuid}/snapshots',
-           data={'snapshot_name': 'snapX'},
+           data={'name': 'snapX'},
     )
 
     call('DELETE', f'/clusters/{cluster}/pools/{pool}/volumes/{lvol_uuid}')
