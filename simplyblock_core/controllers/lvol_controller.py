@@ -1387,8 +1387,6 @@ def get_capacity(lvol_uuid, history, records_count=20, parse_sizes=True):
         records_number = 20
 
     records_list = db_controller.get_lvol_stats(lvol, limit=records_number)
-    if not records_list:
-        return False
     cap_stats_keys = [
         "date",
         "size_total",
@@ -1431,8 +1429,6 @@ def get_io_stats(lvol_uuid, history, records_count=20, parse_sizes=True, with_si
         records_number = 20
 
     records_list = db_controller.get_lvol_stats(lvol, limit=records_number)
-    if not records_list:
-        return False
     io_stats_keys = [
         "date",
         "read_bytes",

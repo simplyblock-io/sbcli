@@ -7,7 +7,6 @@ from typing import List, Optional
 from simplyblock_core import constants
 from simplyblock_core.models.caching_node import CachingNode
 from simplyblock_core.models.cluster import Cluster
-from simplyblock_core.models.deployer import Deployer
 from simplyblock_core.models.events import EventObj
 from simplyblock_core.models.job_schedule import JobSchedule
 from simplyblock_core.models.lvol_model import LVol
@@ -94,6 +93,14 @@ class DBController(metaclass=Singleton):
         ret = CachingNode().read_from_db(self.kv_store)
         ret = sorted(ret, key=lambda x: x.create_dt)
         return ret
+
+    def get_caching_nodes_by_cluster_id(self, cluster_id) -> List[CachingNode]:
+        ret = CachingNode().read_from_db(self.kv_store)
+        nodes = []
+        for n in ret:
+            if n.cluster_id == cluster_id:
+                nodes.append(n)
+        return sorted(nodes, key=lambda x: x.create_dt)
 
     def get_caching_node_by_id(self, id)  -> Optional[CachingNode]:
         ret = CachingNode().read_from_db(self.kv_store, id)
@@ -287,15 +294,6 @@ class DBController(metaclass=Singleton):
 
     def get_cluster_by_id(self, cluster_id) -> Optional[Cluster]:
         ret = Cluster().read_from_db(self.kv_store, id=cluster_id)
-        if ret:
-            return ret[0]
-        return None
-
-    def get_deployers(self) -> List[Deployer]:
-        return Deployer().read_from_db(self.kv_store)
-
-    def get_deployer_by_id(self, deployer_id) -> Optional[Deployer]:
-        ret = Deployer().read_from_db(self.kv_store, id=deployer_id)
         if ret:
             return ret[0]
         return None
