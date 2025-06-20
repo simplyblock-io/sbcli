@@ -202,7 +202,7 @@ def create_snapshot(path: VolumePath, body: _SnapshotParams):
         path.volume().get_id(), body.name
     )
     if err is not None:
-        raise ValueError('Failed to create snapshot')
+        raise ValueError(err)
     return None, 201, {'Location': url_for('api.v2.cluster.pool.snapshot.get', cluster_id=path.cluster_id, snapshot_id=snapshot_id)}  # TODO
 
 
