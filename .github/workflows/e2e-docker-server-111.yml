@@ -1,12 +1,8 @@
-name: E2E Test docker on 192.168.10.146
+name: E2E Test docker on 192.168.10.141
 
 on:
   workflow_dispatch:
     inputs:
-      simplyBlockDeploy_branch:
-        description: 'Branch for simplyBlockDeploy'
-        required: true
-        default: 'main'
       spdk_csi_branch:
         description: 'Branch for spdk-csi'
         required: true
@@ -47,9 +43,9 @@ on:
         default: false
         type: boolean
 
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: false
+# concurrency:
+#   group: ${{ github.workflow }}
+#   cancel-in-progress: false
 
 jobs:
 
@@ -57,7 +53,7 @@ jobs:
     uses: ./.github/workflows/bare-metal-deploy.yml
     with:
       runs_on: self-hosted
-      cluster: c146
+      cluster: c141
       docker_image: simplyblock/simplyblock:${{ github.head_ref || github.ref_name }}
       sbcli_source: ${{ github.head_ref || github.ref_name }}
       ndcs: ${{ github.event.inputs.ndcs || 1 }}
