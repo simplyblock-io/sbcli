@@ -187,6 +187,8 @@ def resume(path: StorageNodePath):
     if not storage_node_ops.resume_storage_node(storage_node.get_id()):
         raise ValueError('Failed to resume storage node')
 
+    return '', 204
+
 
 @instance_api.post('/shutdown')
 def shutdown(path: StorageNodePath, query: _ForceDefaultTrueQuery):
@@ -196,7 +198,7 @@ def shutdown(path: StorageNodePath, query: _ForceDefaultTrueQuery):
         args=(storage_node.get_id(), query.force)
     ).start()
 
-    return None, 202  # FIXME: Provide URL for checking task status
+    return '', 202  # FIXME: Provide URL for checking task status
 
 
 class _RestartQuery(BaseModel):
@@ -218,7 +220,7 @@ def restart(path: StorageNodePath, query: _RestartQuery):
         }
     ).start()
 
-    return None, 202  # FIXME: Provide URL for checking task status
+    return '', 202  # FIXME: Provide URL for checking task status
 
 
 api.register_api(instance_api)
