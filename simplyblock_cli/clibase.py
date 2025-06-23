@@ -768,7 +768,7 @@ class CLIWrapperBase:
         db = db_controller.DBController()
         return (cluster.get_id() for cluster in db.get_storage_nodes() if cluster.get_id().startswith(prefix))
 
-    def database__add(sub_command, args: list[str]):
+    def database__add(self, sub_command, args: list[str]):
         """
         TODO
         Add a new database entry.
@@ -780,6 +780,7 @@ class CLIWrapperBase:
                 raise ValueError(f"Database with name {args.name} already exists.")
             
             managed_db_ops.create_postgresql_deployment(
+                name=args.name,
                 storage_class=args.storage_class,
                 disk_size=args.disk_size,
                 postgres_version=args.version,
@@ -788,8 +789,9 @@ class CLIWrapperBase:
             )
         else:
             raise ValueError(f"Unsupported database type: {type}")        
+        return True
 
-    def database__list(sub_command, args):
+    def database__list(self, sub_command, args):
         """
         TODO
         Add a new database entry.
@@ -797,7 +799,7 @@ class CLIWrapperBase:
         db = db_controller.DBController()
         return db.get_managed_databases()
 
-    def database__delete(sub_command, args):
+    def database__delete(self, sub_command, args):
         """
         TODO
         Add a new database entry.
@@ -806,7 +808,7 @@ class CLIWrapperBase:
         # remove both the deployment, PVC and database entry
         return db.add_entry(args.key, args.value)
 
-    def database__stop(sub_command, args):
+    def database__stop(self, sub_command, args):
         """
         TODO
         Add a new database entry.
@@ -815,7 +817,7 @@ class CLIWrapperBase:
         # just remove the deployment and mark the status as stopped
         return db.add_entry(args.key, args.value)
 
-    def database__snapshot(sub_command, args):
+    def database__snapshot(self, sub_command, args):
         """
         TODO
         Add a new database entry.
@@ -823,7 +825,7 @@ class CLIWrapperBase:
         db = db_controller.DBController()
         return db.add_entry(args.key, args.value)
 
-    def database__list_snapshots(sub_command, args):
+    def database__list_snapshots(self, sub_command, args):
         """
         TODO
         Add a new database entry.
@@ -831,7 +833,7 @@ class CLIWrapperBase:
         db = db_controller.DBController()
         return db.add_entry(args.key, args.value)
 
-    def database__clone(sub_command, args):
+    def database__clone(self, sub_command, args):
         """
         TODO
         Add a new database entry.
@@ -839,7 +841,7 @@ class CLIWrapperBase:
         db = db_controller.DBController()
         return db.add_entry(args.key, args.value)
 
-    def database__resize(sub_command, args):
+    def database__resize(self, sub_command, args):
         """
         TODO
         Add a new database entry.
