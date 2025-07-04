@@ -779,7 +779,7 @@ class CLIWrapperBase:
         if not database:
             raise ValueError(f"Database with ID {args.database_id} does not exist.")
         
-        managed_db_ops.delete_postgresql_resources(
+        managed_db_ops.delete_postgresql_resources2(
             deployment_name=database.deployment_id,
             pvc_name=database.pvc_id,
         )
@@ -793,7 +793,7 @@ class CLIWrapperBase:
         database = db_controller.DBController().get_managed_database(args.database_id)
         if not database:
             raise ValueError(f"Database with ID {args.database_id} does not exist.")
-        managed_db_ops.stop_postgresql_deployment(
+        managed_db_ops.stop_postgresql_deployment2(
             deployment_name=database.deployment_id
         )
         database.status = "stopped"
@@ -807,7 +807,7 @@ class CLIWrapperBase:
         if not database:
             raise ValueError(f"Database with ID {args.database_id} does not exist.")
 
-        managed_db_ops.start_postgresql_deployment(
+        managed_db_ops.start_postgresql_deployment2(
             deployment_name=database.deployment_id,
             version=database.version,
             vcpu_count=database.vcpu_count,
@@ -874,7 +874,7 @@ class CLIWrapperBase:
                                         disk_size=database.disk_size,
                                         )
         
-        managed_db_ops.start_postgresql_deployment(
+        managed_db_ops.start_postgresql_deployment2(
             deployment_name=args.clone_name,
             version=database.version,
             vcpu_count=database.vcpu_count,
