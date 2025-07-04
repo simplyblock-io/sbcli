@@ -2,6 +2,7 @@
 import datetime
 import json
 import os
+from typing import List
 
 import threading
 
@@ -334,110 +335,114 @@ def _create_storage_device_stack(rpc_client, nvme, snode, after_restart):
     return nvme
 
 
-def _create_device_partitions(rpc_client, nvme, snode, num_partitions_per_dev, jm_percent, partition_size=0):
-    nbd_device = rpc_client.nbd_start_disk(nvme.nvme_bdev)
-    time.sleep(3)
-    if not nbd_device:
-        logger.error("Failed to start nbd dev")
-        return False
-    snode_api = SNodeClient(snode.api_endpoint)
-    partition_percent = 0
-    if partition_size:
-        partition_percent = int(partition_size * 100 / nvme.size)
+def _prepare_cluster_devices_partitions(snode: StorageNode, devices: List[NVMeDevice]):
+    rpc_client = snode.rpc_client()
+    bdev_names = {bdev['name'] for bdev in rpc_client.get_bdevs()}
 
-    result, error = snode_api.make_gpt_partitions(nbd_device, jm_percent, num_partitions_per_dev, partition_percent)
-    if error:
-        logger.error("Failed to make partitions")
-        logger.error(error)
-        return False
-    time.sleep(3)
-    rpc_client.nbd_stop_disk(nbd_device)
-    time.sleep(1)
-    rpc_client.bdev_nvme_detach_controller(nvme.nvme_controller)
-    time.sleep(1)
-    rpc_client.bdev_nvme_controller_attach(nvme.nvme_controller, nvme.pcie_address)
-    time.sleep(1)
-    rpc_client.bdev_examine(nvme.nvme_bdev)
-    time.sleep(1)
-    return True
+    def expected_partitions(device: NVMeDevice):
+        return (
+                f'{device.nvme_bdev}p{i + 1}'
+                for i in range(snode.num_partitions_per_dev + 1)
+        )
 
-
-def _prepare_cluster_devices_partitions(snode, devices):
-    db_controller = DBController()
-    rpc_client = RPCClient(
-        snode.mgmt_ip, snode.rpc_port,
-        snode.rpc_username, snode.rpc_password)
-
-    new_devices = []
-    jm_devices = []
-    dev_order = get_next_cluster_device_order(db_controller, snode.cluster_id)
-    bdevs_names = [d['name'] for d in rpc_client.get_bdevs()]
-    for index, nvme in enumerate(devices):
-        if nvme.status == "not_found":
-            continue
-
-        if nvme.status not in [NVMeDevice.STATUS_ONLINE, NVMeDevice.STATUS_NEW]:
-            logger.debug(f"Device is skipped: {nvme.get_id()}, status: {nvme.status}")
-            new_devices.append(nvme)
-            continue
-
-        if nvme.is_partition:
-            dev_part = f"{nvme.nvme_bdev[:-2]}p1"
-            if dev_part in bdevs_names:
-                if dev_part not in jm_devices:
-                    jm_devices.append(dev_part)
-
-            new_device = _create_storage_device_stack(rpc_client, nvme, snode, after_restart=False)
-            if not new_device:
-                logger.error("failed to create dev stack")
-                return False
-            new_devices.append(new_device)
-            if new_device.status == NVMeDevice.STATUS_ONLINE:
-                device_events.device_create(new_device)
-
-        else:
-            # look for partitions
-            partitioned_devices = _search_for_partitions(rpc_client, nvme)
-            logger.debug("partitioned_devices")
-            logger.debug(partitioned_devices)
-            if len(partitioned_devices) == (1 + snode.num_partitions_per_dev):
-                logger.info("Partitioned devices found")
-            else:
-                logger.info(f"Creating partitions for {nvme.nvme_bdev}")
-                _create_device_partitions(rpc_client, nvme, snode, snode.num_partitions_per_dev, snode.jm_percent,
-                                          snode.partition_size)
-                partitioned_devices = _search_for_partitions(rpc_client, nvme)
-                if len(partitioned_devices) == (1 + snode.num_partitions_per_dev):
-                    logger.info("Device partitions created")
-                else:
-                    logger.error("Failed to create partitions")
-                    return False
-
-            jm_devices.append(partitioned_devices.pop(0).nvme_bdev)
-
-            for dev in partitioned_devices:
-                ret = _create_storage_device_stack(rpc_client, dev, snode, after_restart=False)
-                if not ret:
-                    logger.error("failed to create dev stack")
-                    return False
-                if dev.status == NVMeDevice.STATUS_ONLINE:
-                    if dev.cluster_device_order < 0:
-                        dev.cluster_device_order = dev_order
-                        dev_order += 1
-                    device_events.device_create(dev)
-                new_devices.append(dev)
-
-    snode.nvme_devices = new_devices
-
-    if jm_devices:
-        jm_device = _create_jm_stack_on_raid(rpc_client, jm_devices, snode, after_restart=False)
-        if not jm_device:
-            logger.error("Failed to create JM device")
+    def ensure_partitions_internal(device: NVMeDevice, /, force=False):
+        if set(expected_partitions(device)) <= bdev_names:
+            logger.debug(f'Device {device.nvme_bdev} contains expected partitions')
             return False
 
-        snode.jm_device = jm_device
+        if set(expected_partitions(device)) & bdev_names:
+            if not force:
+                raise RuntimeError('Device {device.nvme_bdev} is partitioned, use force to overwrite')
 
-    return True
+            logger.warning(f'Device {device.nvme_bdev} is partitioned, overwriting')
+
+        nbd_device = rpc_client.nbd_start_disk(device.nvme_bdev)
+        time.sleep(3)
+        if not nbd_device:
+            raise RuntimeError("Failed to start nbd dev")
+
+        snode_api = SNodeClient(snode.api_endpoint)
+        result, error = snode_api.make_gpt_partitions(
+                nbd_device, snode.jm_percent, snode.num_partitions_per_dev,
+                partition_percent=snode.partition_size * 100 // device.size,
+        )
+        if error:
+            raise RuntimeError(f'Failed to make partitions: {error}')
+
+        time.sleep(3)
+        rpc_client.nbd_stop_disk(nbd_device)
+        time.sleep(1)
+        return True
+
+    modified_devices = [
+        device
+        for device in devices
+        if ensure_partitions_internal(device, force=True)
+    ]
+
+    for controller, address in {(device.nvme_controller, device.pcie_address) for device in modified_devices}:
+        _, error = rpc_client.bdev_nvme_detach_controller(controller)
+        if error:
+            raise RuntimeError(error)
+
+        time.sleep(1)
+        discovered_devices, error = rpc_client.bdev_nvme_controller_attach(controller, address)
+        if error:
+            raise RuntimeError(error)
+
+        for discovered_device in discovered_devices:
+            rpc_client.bdev_examine(discovered_device)
+            time.sleep(1)
+
+    rpc_client.bdev_wait_for_examine()
+    bdevs = {
+            bdev['name']: bdev
+            for bdev
+            in rpc_client.get_bdevs()
+    }
+
+    # TODO Create RAID already here instead
+    journal_partitions = [
+        next(expected_partitions(device))
+        for device in devices
+    ]
+
+    maximum_device_order = get_next_cluster_device_order(DBController(), snode.cluster_id)
+    data_partitions =  [
+        NVMeDevice({
+            **device.to_dict(),
+            uuid: str(uuid.uuid4()),
+            'device_name': partition,
+            'nvme_bdev': partition,
+            'is_partition': True,
+            'cluster_device_order': maximum_device_order + i,
+            'size': bdevs[partition]['block_size'] * bdevs[partition]['num_blocks'],
+        })
+        for i, (device, partition)
+        in enumerate(
+            (device, partition)
+            for device in devices
+            for partition in list(expected_partitions(device))[1:]
+        )
+    ]
+
+    # TODO end function here and use a generic helper for creating storage stacks/journal devices instead
+
+    for partition in data_partitions:
+        time.sleep(5)
+        ret = _create_storage_device_stack(rpc_client, partition, snode, after_restart=False)
+        if not ret:
+            raise RuntimeError('Failed to create dev stack')
+        time.sleep(5)
+
+    snode.nvme_devices = data_partitions
+
+    jm_device = _create_jm_stack_on_raid(rpc_client, journal_partitions, snode, after_restart=False)
+    time.sleep(1)
+    if not jm_device:
+        raise RuntimeError("Failed to create JM device")
+
+    snode.jm_device = jm_device
 
 
 def _prepare_cluster_devices_jm_on_dev(snode, devices):
@@ -450,9 +455,6 @@ def _prepare_cluster_devices_jm_on_dev(snode, devices):
     rpc_client = RPCClient(snode.mgmt_ip, snode.rpc_port, snode.rpc_username, snode.rpc_password)
     new_devices = []
     for index, nvme in enumerate(devices):
-        if nvme.status == "not_found":
-            continue
-
         if nvme.status == NVMeDevice.STATUS_JM:
             jm_device = _create_jm_stack_on_device(rpc_client, nvme, snode, after_restart=False)
             if not jm_device:
@@ -1150,7 +1152,11 @@ def add_node(cluster_id, node_addr, iface_name, data_nics_list,
 
                 ret = _prepare_cluster_devices_jm_on_dev(snode, nvme_devs)
             else:
-                ret = _prepare_cluster_devices_partitions(snode, nvme_devs)
+                try:
+                    _prepare_cluster_devices_partitions(snode, nvme_devs)
+                    ret = True
+                except RuntimeError:
+                    ret = False
             if not ret:
                 logger.error("Failed to prepare cluster devices")
                 return False
@@ -1728,7 +1734,11 @@ def restart_storage_node(
 
             ret = _prepare_cluster_devices_jm_on_dev(snode, snode.nvme_devices)
         else:
-            ret = _prepare_cluster_devices_partitions(snode, snode.nvme_devices)
+            try:
+                _prepare_cluster_devices_partitions(snode, snode.nvme_devices)
+                ret = True
+            except RuntimeError:
+                ret = False
         if not ret:
             logger.error("Failed to prepare cluster devices")
             # return False
