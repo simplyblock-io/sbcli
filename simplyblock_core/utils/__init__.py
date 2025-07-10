@@ -11,7 +11,6 @@ import sys
 import uuid
 import time
 from typing import Union
-from pathlib import Path
 from kubernetes import client, config
 import docker
 from prettytable import PrettyTable
@@ -25,6 +24,8 @@ from simplyblock_core import shell_utils
 from simplyblock_core.models.job_schedule import JobSchedule
 from simplyblock_core.models.nvme_device import NVMeDevice
 from simplyblock_web import node_utils
+
+from . import pci as pci_utils
 
 CONFIG_KEYS = [
     "app_thread_core",
@@ -1170,34 +1171,6 @@ def get_nvme_pci_devices():
         return [], []
 
 
-def unbind_pci_driver(pci_address):
-    device = Path(f'/sys/bus/pci/devices/{pci_address}')
-    driver = device / 'driver'
-    current_driver_name = driver.readlink().name if driver.exists() else None
-
-    if current_driver_name is not None:
-        (driver / 'unbind').write_text(pci_address)
-
-    driver_override = (driver / 'driver_override')
-    if driver_override.read_text() != '(null)\n':
-        driver_override.write_text('\n')
-
-
-def ensure_nvme_driver(pci_address):
-    NVME_DRIVER = "nvme"
-    device = Path(f'/sys/bus/pci/devices/{pci_address}')
-    driver = device / 'driver'
-    current_driver_name = driver.readlink().name if driver.exists() else None
-    if current_driver_name == NVME_DRIVER:
-        logger.debug(f"{pci_address} is already bound to {NVME_DRIVER}.")
-        return
-
-    unbind_pci_driver(pci_address)
-
-    Path(f'/sys/bus/pci/drivers/{NVME_DRIVER}/bind').write_text(f'{pci_address}\n')
-    logger.debug(f"Bound {pci_address} to {NVME_DRIVER}.")
-
-
 def detect_nvmes(pci_allowed, pci_blocked):
     pci_addresses, blocked_devices = get_nvme_pci_devices()
     ssd_pci_set = set(pci_addresses)
@@ -1226,9 +1199,9 @@ def detect_nvmes(pci_allowed, pci_blocked):
 
     try:
         for pci in pci_addresses:
-            ensure_nvme_driver(pci)
+            pci_utils.ensure_driver(pci, 'nvme')
     except OSError as e:
-        raise RuntimeError('Failed to bind device to nvme driver') from e
+        raise RuntimeError('Failed to set nvme drivers') from e
 
     nvme_base_path = '/sys/class/nvme/'
     nvme_devices = [dev for dev in os.listdir(nvme_base_path) if dev.startswith('nvme')]
@@ -1467,7 +1440,7 @@ def generate_configs(max_lvol, max_prov, sockets_to_use, nodes_per_socket, pci_a
         for nvme, val in nvmes.items():
             pci = val["pci_address"]
             numa = val["numa_node"]
-            unbind_pci_driver(pci)
+            pci_utils.clear_driver(pci)
             if numa in sockets_to_use:
                 system_info[numa]["nvmes"].append(pci)
             else:
@@ -1776,7 +1749,7 @@ def remove_container(client: docker.DockerClient, name, graceful_timeout=3):
             raise
 
 def render_and_deploy_alerting_configs(contact_point, grafana_endpoint, cluster_uuid, cluster_secret):
-    TOP_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    TOP_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
     alerts_template_folder = os.path.join(TOP_DIR, "simplyblock_core/scripts/alerting/")
     alert_resources_file = "alert_resources.yaml"
 
