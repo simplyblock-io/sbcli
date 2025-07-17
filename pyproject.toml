@@ -7,3 +7,4 @@ extend-exclude = ['simplyblock_cli/cli.py']
 
 [tool.mypy]
 check_untyped_defs = true
+exclude = ['simplyblock_web/test']
