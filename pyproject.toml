@@ -4,3 +4,8 @@ build-backend = 'setuptools.build_meta'
 
 [tool.ruff]
 extend-exclude = ['simplyblock_cli/cli.py']
+
+[tool.mypy]
+check_untyped_defs = true
+follow_untyped_imports = true
+exclude = ['simplyblock_web/test']

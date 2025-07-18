@@ -447,7 +447,7 @@ def add_lvol_ha(name, size, host_id_or_name, ha_type, pool_id_or_name, use_comp,
         logger.error(error)
         return False, error
 
-    lvol_dict = {
+    lvol_dict: dict = {
         "type": "bdev_lvol",
         "name": lvol.lvol_bdev,
         "params": {
@@ -1094,12 +1094,15 @@ def list_lvols(is_json, cluster_id, pool_id_or_name, all=False):
         lvols = db_controller.get_lvols(cluster_id)
     elif pool_id_or_name:
         try:
-            pool = db_controller.get_pool_by_id(pool_id_or_name)
+            pool = (
+                    db_controller.get_pool_by_id(pool_id_or_name)
+                    if utils.UUID_PATTERN.match(pool_id_or_name) is not None
+                    else db_controller.get_pool_by_name(pool_id_or_name)
+            )
+            for lv in db_controller.get_lvols_by_pool_id(pool.get_id()):
+                lvols.append(lv)
         except KeyError:
-            pool = db_controller.get_pool_by_name(pool_id_or_name)
-            if pool:
-                for lv in db_controller.get_lvols_by_pool_id(pool.get_id()):
-                    lvols.append(lv)
+            pass
     else:
         lvols = db_controller.get_all_lvols()
 
