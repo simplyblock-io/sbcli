@@ -7,6 +7,9 @@ export SIMPLYBLOCK_DOCKER_IMAGE=$3
 export SIMPLYBLOCK_REPOSITORY="${SIMPLYBLOCK_DOCKER_IMAGE%%:*}"
 export SIMPLYBLOCK_TAG="${SIMPLYBLOCK_DOCKER_IMAGE##*:}"
 
+export CONTROLCENTER_REPOSITORY="https://hub.docker.com/r/simplyblock/controlcenter"
+export CONTROLCENTER_TAG="latest"
+
 export GRAYLOG_ROOT_PASSWORD_SHA2=$4
 export GRAYLOG_PASSWORD_SECRET="is6SP2EdWg0NdmVGv6CEp5hRHNL7BKVMFem4t9pouMqDQnHwXMSomas1qcbKSt5yISr8eBHv4Y7Dbswhyz84Ut0TW6kqsiPs"
 
@@ -19,6 +22,7 @@ export GRAFANA_ENDPOINT=${10}
 export CONTACT_POINT=${11}
 export K8S_NAMESPACE=${12}
 export DISABLE_MONITORING=${13}
+export CONTROLCENTER_REFRESH_TOKEN_SECRET=${14}
 export DIR="$(dirname "$(realpath "$0")")"
 
 if [ -s "/etc/foundationdb/fdb.cluster" ]
