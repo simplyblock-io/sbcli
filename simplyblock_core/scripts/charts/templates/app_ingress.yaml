@@ -17,6 +17,24 @@ spec:
                 port:
                   number: 5000
 ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: simplyblock-controlcenter-ingress
+  namespace: {{ .Release.Namespace }}
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName | default "nginx" }}
+  rules:
+    - http:
+        paths:
+          - path: /controlcenter(/?)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: simplyblock-controlcenter
+                port:
+                  number: 443
+---
 {{- else if (not .Values.ingress.useHostPort) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -40,4 +58,26 @@ spec:
                 name: simplyblock-webappapi
                 port:
                   number: 5000
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: simplyblock-controlcenter-ingress
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+    nginx.ingress.kubernetes.io/{{ $key }}: "{{ $value }}"
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName | default "nginx" }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /controlcenter(/?)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: simplyblock-controlcenter
+                port:
+                  number: 443
 {{- end }}

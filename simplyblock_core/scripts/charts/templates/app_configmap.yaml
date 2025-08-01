@@ -76,7 +76,20 @@ data:
         end
         return -1, record
     end
-
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simplyblock-controlcenter-config
+  namespace: {{ .Release.Namespace }}
+data:
+  CONTROL_PLANE_ADDR: "https://simplyblock-haproxy/"
+  CONTROL_PLANE_CLUSTER_ID: "{{ .Values.cluster.id }}"
+  CONTROL_PLANE_CLUSTER_SECRET: "{{ .Values.cluster.secret }}"
+  CONTROL_CENTER_LOGGER_LEVEL: "debug"
+  CONTROL_CENTER_SRV_TLS: "true"
+  CONTROL_CENTER_SRV_PORT: "443"
+  DATABASE_URI: "mongodb://simplyblock-mongodb-headless:27017/controlcenter"
 ---
 apiVersion: v1
 kind: ConfigMap
